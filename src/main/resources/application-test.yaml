@@ -55,8 +55,9 @@ spring:
             user-name-attribute: preferred_username
       resourceserver:
         jwt:
-          # Use jwk-set-uri instead of issuer-uri to avoid startup discovery
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
           jwk-set-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs
+          
 
 keycloak:
   url: ${KEYCLOAK_URL}
