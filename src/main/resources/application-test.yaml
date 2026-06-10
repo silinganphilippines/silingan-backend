@@ -57,7 +57,6 @@ spring:
         jwt:
           # Use jwk-set-uri instead of issuer-uri to avoid startup discovery
           jwk-set-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs
-          issuer-uri: ${KEYCLOAK_ISSUER_URI}
 
 keycloak:
   url: ${KEYCLOAK_URL}
