@@ -1,0 +1,70 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    driver-class-name: org.postgresql.Driver
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      # Connection pool settings for test environment
+      maximum-pool-size: ${DATABASE_POOL_SIZE:5}
+      minimum-idle: ${DATABASE_MIN_IDLE:1}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # Disable H2 console in test environment
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    hibernate:
+      # Use 'update' for test environment to auto-create/update schema
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:true}
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        session_factory:
+          statement_inspector: com.ria.olita.tech.silingan.config.CommunityStatementInspector
+    defer-datasource-initialization: false
+
+  sql:
+    init:
+      # Disable SQL initialization in test (use JPA ddl-auto instead)
+      mode: never
+  security:
+    oauth2:
+      client:
+        registration:
+          silingan:
+            client-id: ${OAUTH2_CLIENT_ID}
+            client-secret: ${OAUTH2_CLIENT_SECRET}
+            scope: openid,profile,email
+            authorization-grant-type: authorization_code
+            redirect-uri: ${OAUTH2_REDIRECT_URI}
+        provider:
+          silingan:
+            issuer-uri: ${KEYCLOAK_ISSUER_URI}
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          # JWK_SET_URI - URI to fetch JSON Web Keys for JWT validation
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs}
+keycloak:
+  url: ${KEYCLOAK_URL}
+  realm: ${KEYCLOAK_REALM}
+  client-id: ${KEYCLOAK_CLIENT_ID}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
+
+server:
+  port: ${PORT:10000}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    com.ria.olita.tech.silingan: DEBUG
+    com.ria.olita.tech.silingan.security: DEBUG
+    org.springframework.security: ${SECURITY_LOG_LEVEL:DEBUG}
+
