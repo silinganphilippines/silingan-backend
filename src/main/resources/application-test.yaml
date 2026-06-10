@@ -44,27 +44,44 @@ spring:
             scope: openid,profile,email
             authorization-grant-type: authorization_code
             redirect-uri: ${OAUTH2_REDIRECT_URI}
+            provider: silingan
         provider:
           silingan:
-            issuer-uri: ${KEYCLOAK_ISSUER_URI}
+            # Explicit endpoints to avoid issuer discovery at startup
+            authorization-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/auth
+            token-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/token
+            user-info-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/userinfo
+            jwk-set-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
       resourceserver:
         jwt:
+          # Use jwk-set-uri instead of issuer-uri to avoid startup discovery
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs
           issuer-uri: ${KEYCLOAK_ISSUER_URI}
-          # JWK_SET_URI - URI to fetch JSON Web Keys for JWT validation
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs}
+
 keycloak:
   url: ${KEYCLOAK_URL}
   realm: ${KEYCLOAK_REALM}
   client-id: ${KEYCLOAK_CLIENT_ID}
   client-secret: ${KEYCLOAK_CLIENT_SECRET}
 
+# ============================================
+# Server Configuration
+# ============================================
 server:
+  # SERVER_PORT - Port the application listens on
+  # Render.com uses PORT=10000 by default
   port: ${PORT:10000}
 
+# ============================================
+# Logging Configuration (Test - More verbose)
+# ============================================
+# LOG_LEVEL - Root logging level (INFO, WARN, ERROR)
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
     com.ria.olita.tech.silingan: DEBUG
     com.ria.olita.tech.silingan.security: DEBUG
     org.springframework.security: ${SECURITY_LOG_LEVEL:DEBUG}
+
 
