@@ -2,7 +2,9 @@ spring:
   application:
     name: silingan
   profiles:
-    active: dev
+    # Default profile for local development
+    # Override with SPRING_PROFILES_ACTIVE=prod for production
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: jdbc:h2:file:./data/silingan-db;AUTO_SERVER=TRUE
@@ -41,25 +43,44 @@ spring:
             scope: openid,profile,email
             authorization-grant-type: authorization_code
             redirect-uri: http://localhost:8081/login/oauth2/code/silingan
+            provider: silingan
         provider:
           silingan:
-            issuer-uri: http://localhost:8080/realms/silingan-platform
+            # Explicit endpoints to avoid issuer discovery at startup
+            authorization-uri: http://localhost:8080/realms/silingan-platform/protocol/openid-connect/auth
+            token-uri: http://localhost:8080/realms/silingan-platform/protocol/openid-connect/token
+            user-info-uri: http://localhost:8080/realms/silingan-platform/protocol/openid-connect/userinfo
+            jwk-set-uri: http://localhost:8080/realms/silingan-platform/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/silingan-platform
+          # Only use jwk-set-uri to avoid startup discovery
           jwk-set-uri: http://localhost:8080/realms/silingan-platform/protocol/openid-connect/certs
 
+# ============================================
+# Custom Keycloak Admin Configuration (Local Development)
+# ============================================
 keycloak:
   url: http://localhost:8080
   realm: silingan-platform
   client-id: silingan-backend
   client-secret: kxY6kRsvCejFAB4jwytOUH7mhkpbhyYN
 
+# ============================================
+# Server Configuration
+# ============================================
 server:
-  port: 8082
+  # SERVER_PORT - Port the application listens on
+  port: ${SERVER_PORT:8082}
 
+# ============================================
+# Logging Configuration
+# ============================================
 logging:
   level:
     root: INFO
     com.ria.olita.tech.silingan.security: DEBUG
     org.springframework.security: DEBUG
+
+
+
