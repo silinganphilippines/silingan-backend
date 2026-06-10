@@ -1,25 +1,19 @@
 # Build stage
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
+# Copy pom.xml and download dependencies (cached layer)
 COPY pom.xml .
-COPY mvnw .
-COPY .mvn .mvn
-
-# Make Maven wrapper executable
-RUN chmod +x mvnw
-
-# Download dependencies (cached layer)
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
 # Copy source code
 COPY src ./src
 
-RUN ./mvnw clean package -DskipTests
+# Build the application (skip tests for faster build)
+RUN mvn clean package -DskipTests
 
-
+# Production stage
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
@@ -30,6 +24,5 @@ COPY --from=builder /app/target/*.jar app.jar
 # Expose port
 EXPOSE 10000
 
-# Run the application with production profile
+# Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
-
