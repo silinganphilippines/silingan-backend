@@ -17,7 +17,6 @@ import com.ria.olita.tech.silingan.entity.Tenant;
 public interface TenantMapper {
 
 	@Mapping(target = "id", ignore = true)
-	@Mapping(target = "community", ignore = true)
 	@Mapping(target = "status", ignore = true)
 	@Mapping(target = "name", source = "name")
 	@Mapping(target = "contactPerson", source = "contactPerson")
