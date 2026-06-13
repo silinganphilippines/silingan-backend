@@ -16,38 +16,44 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "user_communities")
-@Data
-@Builder
+@Table(
+	name = "user_communities",
+	uniqueConstraints = {
+		@UniqueConstraint(columnNames = {"user_id", "community_id"})
+	}
+)
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class UserCommunity {
 
 	@Id
 	@GeneratedValue
-	@Column(columnDefinition = "UUID")
 	private UUID id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", columnDefinition = "UUID NOT NULL")
+	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "community_id", columnDefinition = "UUID NOT NULL")
+	@JoinColumn(name = "community_id", nullable = false)
 	private Community community;
 
 	@Enumerated(EnumType.STRING)
-	@Column(name = "role", columnDefinition = "VARCHAR(255)")
+	@Column(nullable = false)
 	private CommunityRole role;
 
 	@CreationTimestamp
 	@Column(name = "joined_at", columnDefinition = "TIMESTAMP")
 	private LocalDateTime joinedAt;
-
 }

@@ -13,8 +13,8 @@ import com.ria.olita.tech.silingan.dto.res.TenantResponse;
 import com.ria.olita.tech.silingan.entity.Address;
 import com.ria.olita.tech.silingan.entity.Tenant;
 import com.ria.olita.tech.silingan.entity.TenantStatus;
-import com.ria.olita.tech.silingan.exception.BadRequestException;
-import com.ria.olita.tech.silingan.exception.ResourceNotFoundException;
+import com.ria.olita.tech.silingan.exception.NotFoundException;
+import com.ria.olita.tech.silingan.exception.ValidationException;
 import com.ria.olita.tech.silingan.mapper.AddressMapper;
 import com.ria.olita.tech.silingan.mapper.TenantMapper;
 import com.ria.olita.tech.silingan.repository.TenantRepository;
@@ -37,21 +37,25 @@ public class TenantServiceImpl implements TenantService {
 	public TenantResponse create(TenantRequest request) {
 		// Validate request
 		if (request == null) {
-			throw new BadRequestException("Tenant request cannot be null");
+			throw new ValidationException("Tenant request cannot be null");
 		}
-		
-		if (request.name() == null || request.name().trim().isEmpty()) {
-			throw new BadRequestException("Tenant name is required and cannot be empty");
+
+		if (request.name() == null || request.name()
+			.trim()
+			.isEmpty()) {
+			throw new ValidationException("Tenant name is required and cannot be empty");
 		}
-		
+
 		try {
 			Tenant tenant = tenantMapper.toEntity(request);
-			
+
 			// Ensure name is not null - defensive check
-			if (tenant.getName() == null || tenant.getName().trim().isEmpty()) {
+			if (tenant.getName() == null || tenant.getName()
+				.trim()
+				.isEmpty()) {
 				tenant.setName(request.name());
 			}
-			
+
 			if (request.billingAddress() != null) {
 				tenant.setBillingAddress(addressMapper.toEntity(request.billingAddress()));
 			}
@@ -71,7 +75,7 @@ public class TenantServiceImpl implements TenantService {
 	@Transactional(readOnly = true)
 	public TenantResponse getById(UUID id) {
 		Tenant tenant = tenantRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("Tenant", "id", id));
+			.orElseThrow(() -> new NotFoundException("Tenant not found with id = " + id));
 		return tenantMapper.toResponse(tenant);
 	}
 
@@ -96,7 +100,7 @@ public class TenantServiceImpl implements TenantService {
 	@Override
 	public TenantResponse update(UUID id, UpdateTenantRequest request) {
 		Tenant tenant = tenantRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("Tenant", "id", id));
+			.orElseThrow(() -> new NotFoundException("Tenant not found with id = " + id));
 
 		if (request.name() != null) {
 			tenant.setName(request.name());
@@ -129,7 +133,7 @@ public class TenantServiceImpl implements TenantService {
 	@Override
 	public TenantResponse updateStatus(UUID id, TenantStatus status) {
 		Tenant tenant = tenantRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("Tenant", "id", id));
+			.orElseThrow(() -> new NotFoundException("Tenant not found with id = " + id));
 		tenant.setStatus(status);
 		Tenant updated = tenantRepository.save(tenant);
 		return tenantMapper.toResponse(updated);
@@ -138,7 +142,7 @@ public class TenantServiceImpl implements TenantService {
 	@Override
 	public void delete(UUID id) {
 		Tenant tenant = tenantRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("Tenant", "id", id));
+			.orElseThrow(() -> new NotFoundException("Tenant not found with id = " + id));
 		tenant.setDeleted(true);
 		tenantRepository.save(tenant);
 	}

@@ -3,6 +3,7 @@ package com.ria.olita.tech.silingan.rest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,12 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @Slf4j
 @RequestMapping("/api/v1/users")
-@Profile("dev")
 @RequiredArgsConstructor
 public class UserController {
 
 	private final UserService userService;
 
+	@PreAuthorize("hasRole('PLATFORM_ADMIN') or hasRole('COMMUNITY_ADMIN')")
 	@PostMapping
 	public ResponseEntity<Void> createUser(@RequestBody CreateUserRequest request) {
 		log.info("Create user request received for username: {}", request.username());

@@ -2,18 +2,25 @@ package com.ria.olita.tech.silingan.entity;
 
 import jakarta.persistence.*;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Setter;
+
 
 import java.util.UUID;
 
+import org.hibernate.annotations.SQLRestriction;
+
+
 @Entity
 @Table(name = "addresses")
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
+@SQLRestriction("deleted = false")
 public class Address {
 
 	@Id

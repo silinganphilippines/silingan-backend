@@ -1,9 +1,9 @@
 package com.ria.olita.tech.silingan.exception;
 
-import com.ria.olita.tech.silingan.dto.res.ApiResponse;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -11,41 +11,98 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-        @ExceptionHandler(ResourceNotFoundException.class)
-        public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(ResourceNotFoundException ex) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error(ex.getMessage()));
-        }
 
-        @ExceptionHandler(BadRequestException.class)
-        public ResponseEntity<ApiResponse<Void>> handleBadRequestException(BadRequestException ex) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(ApiResponse.error(ex.getMessage()));
-        }
+	@ExceptionHandler(ServiceException.class)
+	public ResponseEntity<ApiError> handleServiceException(
+		ServiceException ex,
+		HttpServletRequest request) {
 
-        @ExceptionHandler(MethodArgumentNotValidException.class)
-        public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(
-                MethodArgumentNotValidException ex) {
-                Map<String, String> errors = new HashMap<>();
-                ex.getBindingResult().getAllErrors().forEach((error) -> {
-                        String fieldName = ((FieldError) error).getField();
-                        String errorMessage = error.getDefaultMessage();
-                        errors.put(fieldName, errorMessage);
-                });
-                ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
-                        .success(false)
-                        .message("Validation failed")
-                        .data(errors)
-                        .build();
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
+		ApiError error = new ApiError(
+			ex.getCode(),
+			ex.getMessage(),
+			request.getRequestURI()
+		);
 
-        @ExceptionHandler(Exception.class)
-        public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(ApiResponse.error("An unexpected error occurred: " + ex.getMessage()));
-        }
+		return ResponseEntity
+			.status(mapStatus(ex.getCode()))
+			.body(error);
+	}
+
+
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<ApiError> handleValidationErrors(
+		MethodArgumentNotValidException ex,
+		HttpServletRequest request) {
+
+		Map<String, String> errors = new HashMap<>();
+
+		ex.getBindingResult()
+			.getFieldErrors()
+			.forEach(err ->
+				errors.put(err.getField(), err.getDefaultMessage())
+			);
+
+		ApiError apiError = new ApiError(
+			"VALIDATION_ERROR",
+			"Validation failed",
+			request.getRequestURI()
+		);
+
+		apiError.setErrors(errors);
+
+		return ResponseEntity
+			.status(HttpStatus.BAD_REQUEST)
+			.body(apiError);
+	}
+
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ApiError> handleInvalidJson(
+		HttpMessageNotReadableException ignoredEx,
+		HttpServletRequest request) {
+
+		ApiError error = new ApiError(
+			"INVALID_REQUEST",
+			"Malformed JSON request",
+			request.getRequestURI()
+		);
+
+		return ResponseEntity
+			.status(HttpStatus.BAD_REQUEST)
+			.body(error);
+	}
+
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ApiError> handleGeneral(
+		Exception ignoredEx,
+		HttpServletRequest request) {
+
+		ApiError error = new ApiError(
+			"INTERNAL_ERROR",
+			"Something went wrong",
+			request.getRequestURI()
+		);
+
+		return ResponseEntity
+			.status(HttpStatus.INTERNAL_SERVER_ERROR)
+			.body(error);
+	}
+
+
+	private HttpStatus mapStatus(String code) {
+		return switch (code) {
+			case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
+			case "CONFLICT" -> HttpStatus.CONFLICT;
+			case "VALIDATION_ERROR" -> HttpStatus.BAD_REQUEST;
+			case "UNAUTHORIZED" -> HttpStatus.UNAUTHORIZED;
+			case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
+			default -> HttpStatus.INTERNAL_SERVER_ERROR;
+		};
+	}
 }
+

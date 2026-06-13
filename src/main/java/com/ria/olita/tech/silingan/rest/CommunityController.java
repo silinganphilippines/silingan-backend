@@ -1,16 +1,13 @@
 package com.ria.olita.tech.silingan.rest;
 
-import com.ria.olita.tech.silingan.dto.req.AddressRequest;
+import com.ria.olita.tech.silingan.dto.req.CommunityStatusUpdateRequest;
 import com.ria.olita.tech.silingan.dto.req.CreateCommunityRequest;
 import com.ria.olita.tech.silingan.dto.req.UpdateCommunityRequest;
 import com.ria.olita.tech.silingan.dto.res.ApiResponse;
 import com.ria.olita.tech.silingan.dto.res.CommunityResponse;
 import com.ria.olita.tech.silingan.entity.CommunityStatus;
 import com.ria.olita.tech.silingan.entity.CommunityType;
-import com.ria.olita.tech.silingan.service.CommunityCodeService;
 import com.ria.olita.tech.silingan.service.CommunityService;
-import com.ria.olita.tech.silingan.security.context.UserContextHolder;
-import com.ria.olita.tech.silingan.service.KeycloakService;
 
 import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
@@ -100,11 +97,11 @@ public class CommunityController {
 		return ResponseEntity.ok(ApiResponse.success("Community deleted successfully", null));
 	}
 
-	@PutMapping("/{id}/archive")
+	@PutMapping("/{id}/status")
 	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
-	public ResponseEntity<ApiResponse<CommunityResponse>> archive(@PathVariable UUID id) {
-		CommunityResponse response = communityService.archive(id);
-		return ResponseEntity.ok(ApiResponse.success("Community archived successfully", response));
+	public ResponseEntity<ApiResponse<Void>> updateStatus(@PathVariable("id") UUID communityId, @Valid @RequestBody CommunityStatusUpdateRequest communityStatusUpdateRequest) {
+		communityService.updateStatus(communityId,communityStatusUpdateRequest.status());
+		return ResponseEntity.ok(ApiResponse.success("Community status updated successfully",null));
 	}
 
 	@GetMapping("/validate")

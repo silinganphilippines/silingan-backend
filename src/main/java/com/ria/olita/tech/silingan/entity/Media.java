@@ -62,7 +62,6 @@ public class Media extends BaseEntity {
 	@Column(name = "stored_name", nullable = false)
 	private String storedName;
 
-	// MIME type (image/png, application/pdf)
 	@Column(name = "content_type", nullable = false)
 	private String contentType;
 
@@ -73,10 +72,11 @@ public class Media extends BaseEntity {
 	@Column(name = "media_type", nullable = false)
 	private MediaType mediaType;
 
-	@Column(name = "reference_type")
-	private String referenceType; // ISSUE, COMMUNITY, ANNOUNCEMENT
+	@Column(name = "reference_type",nullable = false)
+	@Enumerated(EnumType.STRING)
+	private MediaReference referenceType;
 
-	@Column(name = "reference_id")
+	@Column(name = "reference_id",nullable = false)
 	private UUID referenceId;
 
 }

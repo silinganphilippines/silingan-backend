@@ -1,10 +1,12 @@
 package com.ria.olita.tech.silingan.dto.req;
 
+import java.util.UUID;
+
+import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import com.ria.olita.tech.silingan.entity.CommunityRole;
 
 @Builder
 public record CreateUserRequest(
@@ -15,7 +17,10 @@ public record CreateUserRequest(
 	String password,
 	boolean enabled,
 	boolean emailVerified,
-	Map<String, List<String>> attributes,
-	String communityCode
+	CommunityRole communityRole,
+	@NotBlank
+	UUID communityId,
+	AddressRequest address
 ) {
 }
+

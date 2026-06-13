@@ -13,14 +13,17 @@ import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "announcements")
+@Table(
+  name = "announcements",
+  indexes = {
+    @Index(name = "idx_title_community", columnList = "title, community_id")
+  }
+)
 @Builder
-@Data
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @SQLRestriction("deleted = false")
-
 @FilterDef(
   name = "communityFilter",
   parameters = @ParamDef(name = "communityId", type = UUID.class)
@@ -29,6 +32,7 @@ import org.hibernate.annotations.SQLRestriction;
   name = "communityFilter",
   condition = "community_id = :communityId"
 )
+@Setter
 public class Announcement extends BaseEntity {
 
     @Id

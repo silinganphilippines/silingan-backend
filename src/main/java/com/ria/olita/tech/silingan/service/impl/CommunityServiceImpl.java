@@ -8,8 +8,9 @@ import com.ria.olita.tech.silingan.entity.Address;
 import com.ria.olita.tech.silingan.entity.Community;
 import com.ria.olita.tech.silingan.entity.CommunityStatus;
 import com.ria.olita.tech.silingan.entity.CommunityType;
-import com.ria.olita.tech.silingan.exception.BadRequestException;
-import com.ria.olita.tech.silingan.exception.ResourceNotFoundException;
+import com.ria.olita.tech.silingan.exception.ConflictException;
+import com.ria.olita.tech.silingan.exception.NotFoundException;
+import com.ria.olita.tech.silingan.exception.ValidationException;
 import com.ria.olita.tech.silingan.mapper.AddressMapper;
 import com.ria.olita.tech.silingan.mapper.CommunityMapper;
 import com.ria.olita.tech.silingan.repository.CommunityRepository;
@@ -69,13 +70,13 @@ public class CommunityServiceImpl implements CommunityService {
 		}
 
 		var tenant = tenantRepository.findById(request.tenantId())
-			.orElseThrow(() -> new ResourceNotFoundException("Tenant", "id", request.tenantId()));
+			.orElseThrow(() -> new NotFoundException("Tenant not found with id =" + request.tenantId()));
 		community.setTenant(tenant);
 
 		Community createdCommunity = communityRepository.save(community);
 		// Create group in keycloak
-		System.out.println("Generated systemcode: "+ createdCommunity.getSystemGenCode());
-		System.out.println("Generated systemcode: "+ createdCommunity.getCommunityCode());
+		System.out.println("Generated systemcode: " + createdCommunity.getSystemGenCode());
+		System.out.println("Generated systemcode: " + createdCommunity.getCommunityCode());
 
 		keycloakService.createGroup(createdCommunity.getCommunityCode());
 		return communityMapper.toResponse(createdCommunity);
@@ -85,7 +86,7 @@ public class CommunityServiceImpl implements CommunityService {
 	@Transactional(readOnly = true)
 	public CommunityResponse getById(UUID id) {
 		Community community = communityRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("Community", "id", id));
+			.orElseThrow(() -> new NotFoundException("Community not found with id =" + id));
 		return communityMapper.toResponse(community);
 	}
 
@@ -93,7 +94,7 @@ public class CommunityServiceImpl implements CommunityService {
 	@Transactional(readOnly = true)
 	public CommunityResponse getByCode(String code) {
 		Community community = communityRepository.findByCode(code)
-			.orElseThrow(() -> new ResourceNotFoundException("Community", "code", code));
+			.orElseThrow(() -> new NotFoundException("Community code not found with code =" + code));
 		return communityMapper.toResponse(community);
 	}
 
@@ -128,7 +129,7 @@ public class CommunityServiceImpl implements CommunityService {
 	@Transactional(readOnly = true)
 	public List<CommunityResponse> getByUserId(UUID userId) {
 		var user = userRepository.findById(userId)
-			.orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+			.orElseThrow(() -> new NotFoundException("User not found with id = " + userId));
 		return user.getJoinedCommunities()
 			.stream()
 			.map(communityMapper::toResponse)
@@ -138,7 +139,7 @@ public class CommunityServiceImpl implements CommunityService {
 	@Override
 	public CommunityResponse update(UUID id, UpdateCommunityRequest request) {
 		Community community = communityRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("Community", "id", id));
+			.orElseThrow(() -> new NotFoundException("Community not found with id = " + id));
 
 		communityMapper.updateEntityFromRequest(request, community);
 
@@ -153,7 +154,7 @@ public class CommunityServiceImpl implements CommunityService {
 		}
 
 		if (community.getTenant() == null) {
-			throw new BadRequestException("Community tenant is required");
+			throw new ValidationException("Community tenant is required");
 		}
 
 		Community updated = communityRepository.save(community);
@@ -161,9 +162,23 @@ public class CommunityServiceImpl implements CommunityService {
 	}
 
 	@Override
+	public void updateStatus(UUID id, CommunityStatus status) {
+		Community community = communityRepository.findById(id)
+			.orElseThrow(() -> new NotFoundException("Community not found with id = " + id));
+
+		if (community.getStatus() == CommunityStatus.ARCHIVE) {
+			throw new ConflictException("Cannot change status of archived community");
+		}
+		if (status != null && community.getStatus() != status) {
+			community.setStatus(status);
+		}
+		communityRepository.save(community);
+	}
+
+	@Override
 	public void delete(UUID id) {
 		if (!communityRepository.existsById(id)) {
-			throw new ResourceNotFoundException("Community", "id", id);
+			throw new NotFoundException("Community not found with id = " + id);
 		}
 		communityRepository.deleteById(id);
 	}
@@ -176,19 +191,5 @@ public class CommunityServiceImpl implements CommunityService {
 				.keycloakUserId(),
 			Map.of("communityId", List.of(communityId.toString()))
 		);
-	}
-
-	@Override
-	public CommunityResponse archive(UUID id) {
-		Community community = communityRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("Community", "id", id));
-
-		if (community.getStatus() == CommunityStatus.ARCHIVE) {
-			throw new BadRequestException("Community is already archived");
-		}
-
-		community.setStatus(CommunityStatus.ARCHIVE);
-		Community archived = communityRepository.save(community);
-		return communityMapper.toResponse(archived);
 	}
 }

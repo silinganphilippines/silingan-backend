@@ -3,9 +3,12 @@ package com.ria.olita.tech.silingan.service.impl;
 import com.ria.olita.tech.silingan.config.KeycloakProperties;
 import com.ria.olita.tech.silingan.dto.req.CreateUserRequest;
 import com.ria.olita.tech.silingan.entity.CommunityRole;
+import com.ria.olita.tech.silingan.exception.ConflictException;
+import com.ria.olita.tech.silingan.repository.UserCommunityRepository;
 import com.ria.olita.tech.silingan.service.KeycloakService;
 
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
@@ -29,7 +32,9 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class KeycloakServiceImpl implements KeycloakService {
+	private final UserCommunityRepository userCommunityRepository;
 
 	private static final Logger log = LoggerFactory.getLogger(KeycloakServiceImpl.class);
 
@@ -47,19 +52,11 @@ public class KeycloakServiceImpl implements KeycloakService {
 		// Create user representation
 		UserRepresentation user = new UserRepresentation();
 		user.setUsername(request.username());
-		user.setEmailVerified(Boolean.TRUE);
 		user.setEmail(request.email());
 		user.setFirstName(request.firstName());
 		user.setLastName(request.lastName());
 		user.setEnabled(request.enabled());
-		user.setCredentials(Collections.singletonList(createPasswordCredential(request.password())));
 		user.setRequiredActions(Collections.emptyList());
-		// Assign realm role after user creation
-		// Note: Realm roles must be assigned after user is created
-		if (request.attributes() != null && !request.attributes()
-			.isEmpty()) {
-			user.setAttributes(request.attributes());
-		}
 
 		// Create the user
 		Response response = usersResource.create(user);
@@ -68,20 +65,19 @@ public class KeycloakServiceImpl implements KeycloakService {
 			String userId = extractUserId(response);
 			log.info("User created successfully with ID: {}", userId);
 
-			if (request.attributes() != null && !request.attributes()
-				.isEmpty()) {
-				updateUserAttributes(userId, request.attributes());
+			// add communityId as attr in kc
+			updateUserAttributes(userId, Map.of("communityId", List.of(request.communityId()
+				.toString())));
+
+			if (request.communityRole() != null) {
+				if (request.communityRole().equals(CommunityRole.COMMUNITY_ADMIN) && userCommunityRepository.hasRoleInCommunity(request.communityId(), request.communityRole())) {
+					throw new ConflictException("Community already has a COMMUNITY_ADMIN assigned");
+				}
+				assignRealmRole(realmResource, userId, request.communityRole().name());
+			} else {
+				// Assign default RESIDENT role to the user
+				assignRealmRole(realmResource, userId, CommunityRole.RESIDENT.name());
 			}
-
-			// Add user to community group if communityCode is provided
-			if (request.communityCode() != null && !request.communityCode()
-				.isEmpty()) {
-				addUserToCommunityGroup(realmResource, userId, request.communityCode());
-			}
-
-			// Assign default RESIDENT role to the user
-			assignRealmRole(realmResource, userId, CommunityRole.RESIDENT.name());
-
 			return userId;
 		} else if (response.getStatus() == 409) {
 			log.error("User already exists: {}", request.username());
@@ -131,14 +127,6 @@ public class KeycloakServiceImpl implements KeycloakService {
 			.clientSecret(keycloakProperties.getClientSecret())
 			.grantType(OAuth2Constants.CLIENT_CREDENTIALS)
 			.build();
-	}
-
-	private CredentialRepresentation createPasswordCredential(String password) {
-		CredentialRepresentation credential = new CredentialRepresentation();
-		credential.setType(CredentialRepresentation.PASSWORD);
-		credential.setValue(password);
-		credential.setTemporary(false);
-		return credential;
 	}
 
 	private String extractUserId(Response response) {

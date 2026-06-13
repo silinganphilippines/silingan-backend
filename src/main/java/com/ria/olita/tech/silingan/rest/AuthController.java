@@ -1,14 +1,16 @@
 package com.ria.olita.tech.silingan.rest;
 
-import com.ria.olita.tech.silingan.dto.req.RegisterRequest;
-import com.ria.olita.tech.silingan.service.UserOnboardingService;
+import com.ria.olita.tech.silingan.dto.req.CreateUserRequest;
+import com.ria.olita.tech.silingan.service.UserService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,15 +26,16 @@ public class AuthController {
 
 	private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-	private final UserOnboardingService userOnboardingService;
+	private final UserService userService;
 
 	@PostMapping("/register")
-	public ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest request) {
+	@PreAuthorize("hasRole('PLATFORM_ADMIN') or hasRole('COMMUNITY_ADMIN')")
+	public ResponseEntity<Map<String, Object>> register(@RequestBody @Valid CreateUserRequest request) {
 		log.info("Registration request received for username: {}", request.username());
 
 		try {
 			// Register user in Keycloak and database
-			userOnboardingService.registerUser(request);
+			userService.createUser(request);
 
 			Map<String, Object> response = new HashMap<>();
 			response.put("success", true);

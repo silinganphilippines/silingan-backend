@@ -15,8 +15,6 @@ import org.mapstruct.ReportingPolicy;
 	unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IssueCategoryMapper {
 
-	@Mapping(target = "communityId", source = "community.id")
-	@Mapping(target = "communityName", source = "community.name")
 	IssueCategoryResponse toResponse(IssueCategory category);
 
 	@Mapping(target = "community.id", source = "communityId")

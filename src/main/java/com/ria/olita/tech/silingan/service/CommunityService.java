@@ -28,7 +28,7 @@ public interface CommunityService {
 
 	CommunityResponse update(UUID id, UpdateCommunityRequest request);
 
-	CommunityResponse archive(UUID id);
+	void updateStatus(UUID id, CommunityStatus status);
 
 	void delete(UUID id);
 

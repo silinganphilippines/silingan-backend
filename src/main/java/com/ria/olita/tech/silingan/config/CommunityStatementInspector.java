@@ -3,6 +3,8 @@ package com.ria.olita.tech.silingan.config;
 import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.springframework.stereotype.Component;
 
+import com.ria.olita.tech.silingan.exception.ForbiddenException;
+import com.ria.olita.tech.silingan.exception.ValidationException;
 import com.ria.olita.tech.silingan.security.context.UserContextHolder;
 
 @Component
@@ -31,7 +33,7 @@ public class CommunityStatementInspector implements StatementInspector {
 		}
 
 		// BLOCK unsafe query
-		throw new IllegalStateException(
+		throw new ValidationException(
 			"Unsafe query detected (missing community filter): " + sql
 		);
 	}

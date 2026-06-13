@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import com.ria.olita.tech.silingan.entity.CommunityRole;
+import com.ria.olita.tech.silingan.exception.ValidationException;
 import com.ria.olita.tech.silingan.security.context.UserContext;
 import com.ria.olita.tech.silingan.security.context.UserContextHolder;
 
@@ -40,7 +41,7 @@ class CommunityStatementInspectorTest {
 		String sql = "SELECT * FROM announcements";
 
 		assertThrows(
-			IllegalStateException.class,
+			ValidationException.class,
 			() -> communityStatementInspector.inspect(sql)
 		);
 	}
@@ -66,7 +67,7 @@ class CommunityStatementInspectorTest {
 			assertThat(result).isEqualTo(sql);
 		} else {
 			assertThatThrownBy(() -> communityStatementInspector.inspect(sql))
-				.isInstanceOf(IllegalStateException.class);
+				.isInstanceOf(ValidationException.class);
 		}
 	}
 }
