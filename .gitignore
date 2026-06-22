@@ -12,3 +12,4 @@ DECache*.bin
 .DS_Store
 *.tmp
 *.swp
+/data
