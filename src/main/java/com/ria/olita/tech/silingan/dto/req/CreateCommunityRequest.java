@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.ria.olita.tech.silingan.entity.CommunityType;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,16 +14,17 @@ import lombok.Builder;
 public record CreateCommunityRequest(
 
 	@NotBlank(message = "Name is required")
-	String name,
+	@Schema(example = "Greenbelt Residences") String name,
 
 	@NotNull(message = "Type is required")
-	CommunityType type,
+	@Schema(example = "CONDO") CommunityType type,
 
 	@NotNull(message = "Address is required")
+	@Schema(example = "{\"street\":\"123 Main St\",\"barangay\":\"Poblacion\",\"city\":\"Makati\",\"province\":\"Metro Manila\",\"region\":13,\"postalCode\":\"1200\",\"country\":\"Philippines\"}")
 	AddressRequest address,
 
 	@NotNull(message = "Tenant is required")
-	UUID tenantId
+	@Schema(example = "550e8400-e29b-41d4-a716-446655440000") UUID tenantId
 ) {
 
 

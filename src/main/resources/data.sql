@@ -1,5 +1,5 @@
 INSERT INTO addresses (
-    id, street, barangay, city, province, region, postal_code, country, tower, unit_number, floor,latitude,longitude
+    id, street, barangay, city, province, region, postal_code, country, tower, unit_number, floor, latitude, longitude
 ) VALUES
     ('10000000-0000-0000-0000-000000000001', '123 Mabini Street', 'San Isidro', 'Quezon City', 'Metro Manila', 'NCR', '1100', 'Philippines', NULL, NULL, NULL,12.0435,11.3533),
     ('10000000-0000-0000-0000-000000000002', '45 Katipunan Avenue', 'Bagumbayan', 'Quezon City', 'Metro Manila', 'NCR', '1110', 'Philippines', 'Tower A', '1203', '12',98.3423,45.5353);

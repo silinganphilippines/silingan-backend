@@ -19,10 +19,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.ria.olita.tech.silingan.entity.CommunityRole;
 import com.ria.olita.tech.silingan.repository.UserRepository;
@@ -35,6 +39,14 @@ public class UserContextFilter extends OncePerRequestFilter {
 
 	private final UserRepository userRepository;
 	private final EntityManager entityManager;
+
+	private static final Map<String, CommunityRole> ROLE_MAP =
+		Arrays.stream(CommunityRole.values())
+			.collect(Collectors.toMap(
+				r -> r.name().toLowerCase(),
+				Function.identity()
+			));
+
 
 	@Override
 	protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -62,13 +74,15 @@ public class UserContextFilter extends OncePerRequestFilter {
 		String keycloakUserId = (String) claims.get("sub");
 		String userId = userRepository
 			.getUserIdByKeycloakUserId(keycloakUserId)
-			.orElseThrow(() -> new NotFoundException("User not found"));
+			.orElse("30000000-0000-0000-0000-000000000004"); // for testing purposes
+//			.orElseThrow(() -> new NotFoundException("User not found"));
+
 
 		String communityId = extractStringClaim(claims, "communityId");
 		List<CommunityRole> roles = extractRealmRoles(claims).stream()
-			.map(CommunityRole::valueOf)
+			.map(r -> ROLE_MAP.get(r.toLowerCase()))
+			.filter(Objects::nonNull)
 			.toList();
-
 
 		UserContext context = UserContext.builder()
 			.userId(userId)

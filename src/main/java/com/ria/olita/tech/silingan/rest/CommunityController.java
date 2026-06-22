@@ -9,6 +9,13 @@ import com.ria.olita.tech.silingan.entity.CommunityStatus;
 import com.ria.olita.tech.silingan.entity.CommunityType;
 import com.ria.olita.tech.silingan.service.CommunityService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,11 +40,47 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/communities")
 @RequiredArgsConstructor
+@Tag(name = "Community", description = "Community management APIs")
 public class CommunityController {
 
 	private final CommunityService communityService;
 
 	@PostMapping
+	@Operation(
+		summary = "Create a new community",
+		requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+			required = true,
+			content = @Content(
+				schema = @Schema(implementation = CreateCommunityRequest.class),
+				examples = {
+					@ExampleObject(
+						name = "createCommunityExample",
+						summary = "Example community creation (condo)",
+						value = """
+							{
+								"name": "Greenbelt Residences",
+								"type": "CONDO",
+								"address": {
+									"street": "123 Main St",
+									"barangay": "Poblacion",
+									"city": "Makati",
+									"province": "Metro Manila",
+									"region": 13,
+									"postalCode": "1200",
+									"country": "Philippines",
+									"buildingName": "Greenbelt Tower",
+									"tower": "Tower 1",
+									"unitNumber": "Unit 1205",
+									"floor": "12"
+								},
+								"tenantId": "550e8400-e29b-41d4-a716-446655440000"
+							}
+							"""
+					)
+				}
+			)
+		)
+	)
 	public ResponseEntity<ApiResponse<CommunityResponse>> create(
 		@Valid @RequestBody CreateCommunityRequest request) {
 		CommunityResponse response = communityService.create(request);
@@ -46,20 +89,25 @@ public class CommunityController {
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<ApiResponse<CommunityResponse>> getById(@PathVariable UUID id) {
+	@Operation(summary = "Get community by ID")
+	public ResponseEntity<ApiResponse<CommunityResponse>> getById(
+		@Parameter(description = "Community ID", example = "550e8400-e29b-41d4-a716-446655440000") @PathVariable UUID id) {
 		CommunityResponse response = communityService.getById(id);
 		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 
 	@PermitAll
 	@GetMapping("/code/{code}")
-	public ResponseEntity<ApiResponse<CommunityResponse>> getByCode(@PathVariable String code) {
+	@Operation(summary = "Get community by code")
+	public ResponseEntity<ApiResponse<CommunityResponse>> getByCode(
+		@Parameter(description = "Community code", example = "GR-001") @PathVariable String code) {
 		CommunityResponse response = communityService.getByCode(code);
 		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 
 	@GetMapping
 	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
+	@Operation(summary = "Get all communities")
 	public ResponseEntity<ApiResponse<List<CommunityResponse>>> getAll() {
 		List<CommunityResponse> responses = communityService.getAll();
 		return ResponseEntity.ok(ApiResponse.success(responses));
@@ -67,24 +115,60 @@ public class CommunityController {
 
 	@GetMapping("/status/{status}")
 	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
+	@Operation(summary = "Get communities by status")
 	public ResponseEntity<ApiResponse<List<CommunityResponse>>> getByStatus(
-		@PathVariable CommunityStatus status) {
+		@Parameter(description = "Community status", example = "ACTIVE") @PathVariable CommunityStatus status) {
 		List<CommunityResponse> responses = communityService.getByStatus(status);
 		return ResponseEntity.ok(ApiResponse.success(responses));
 	}
 
 	@GetMapping("/type/{type}")
 	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
+	@Operation(summary = "Get communities by type")
 	public ResponseEntity<ApiResponse<List<CommunityResponse>>> getByType(
-		@PathVariable CommunityType type) {
+		@Parameter(description = "Community type", example = "CONDO") @PathVariable CommunityType type) {
 		List<CommunityResponse> responses = communityService.getByType(type);
 		return ResponseEntity.ok(ApiResponse.success(responses));
 	}
 
 	@PutMapping("/{id}")
 	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
+	@Operation(
+		summary = "Update an existing community",
+		requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+			required = true,
+			content = @Content(
+				schema = @Schema(implementation = UpdateCommunityRequest.class),
+				examples = {
+					@ExampleObject(
+						name = "updateCommunityExample",
+						summary = "Example community update",
+						value = """
+							{
+								"name": "Greenbelt Residences",
+								"code": "GR-001",
+								"type": "CONDO",
+								"address": {
+									"street": "123 Main St",
+									"barangay": "Poblacion",
+									"city": "Makati",
+									"province": "Metro Manila",
+									"region": 13,
+									"postalCode": "1200",
+									"country": "Philippines"
+								},
+								"latitude": 14.5547,
+								"longitude": 121.0244,
+								"status": "ACTIVE"
+							}
+							"""
+					)
+				}
+			)
+		)
+	)
 	public ResponseEntity<ApiResponse<CommunityResponse>> update(
-		@PathVariable UUID id,
+		@Parameter(description = "Community ID", example = "550e8400-e29b-41d4-a716-446655440000") @PathVariable UUID id,
 		@RequestBody UpdateCommunityRequest request) {
 		CommunityResponse response = communityService.update(id, request);
 		return ResponseEntity.ok(ApiResponse.success("Community updated successfully", response));
@@ -92,36 +176,64 @@ public class CommunityController {
 
 	@DeleteMapping("/{id}")
 	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
-	public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+	@Operation(summary = "Delete a community")
+	public ResponseEntity<ApiResponse<Void>> delete(
+		@Parameter(description = "Community ID", example = "550e8400-e29b-41d4-a716-446655440000") @PathVariable UUID id) {
 		communityService.delete(id);
 		return ResponseEntity.ok(ApiResponse.success("Community deleted successfully", null));
 	}
 
 	@PutMapping("/{id}/status")
 	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
-	public ResponseEntity<ApiResponse<Void>> updateStatus(@PathVariable("id") UUID communityId, @Valid @RequestBody CommunityStatusUpdateRequest communityStatusUpdateRequest) {
+	@Operation(
+		summary = "Update community status",
+		requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+			required = true,
+			content = @Content(
+				schema = @Schema(implementation = CommunityStatusUpdateRequest.class),
+				examples = {
+					@ExampleObject(
+						name = "updateCommunityStatusExample",
+						summary = "Example community status update",
+						value = """
+							{
+								"status": "ACTIVE"
+							}
+							"""
+					)
+				}
+			)
+		)
+	)
+	public ResponseEntity<ApiResponse<Void>> updateStatus(
+		@Parameter(description = "Community ID", example = "550e8400-e29b-41d4-a716-446655440000") @PathVariable("id") UUID communityId,
+		@Valid @RequestBody CommunityStatusUpdateRequest communityStatusUpdateRequest) {
 		communityService.updateStatus(communityId,communityStatusUpdateRequest.status());
 		return ResponseEntity.ok(ApiResponse.success("Community status updated successfully",null));
 	}
 
 	@GetMapping("/validate")
+	@Operation(summary = "Validate a community ID")
 	public ResponseEntity<ApiResponse<Boolean>> validate(
-		@RequestParam String communityId) {
+		@Parameter(description = "Community ID to validate", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam String communityId) {
 		boolean isValid = communityService.validate(communityId);
 		return ResponseEntity.ok(ApiResponse.success(isValid));
 	}
 
 	@GetMapping("/my-communities")
 	@PreAuthorize("hasRole('RESIDENT')")
+	@Operation(summary = "Get communities for a user")
 	public ResponseEntity<ApiResponse<List<CommunityResponse>>> getMyCommunities(
-		@RequestParam UUID userId) {
+		@Parameter(description = "User ID", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam UUID userId) {
 		List<CommunityResponse> responses = communityService.getByUserId(userId);
 		return ResponseEntity.ok(ApiResponse.success(responses));
 	}
 
 	@PutMapping("/switch/{communityId}")
 	@PreAuthorize("hasRole('RESIDENT')")
-	public ResponseEntity<ApiResponse<UUID>> switchCommunity(@PathVariable UUID communityId) {
+	@Operation(summary = "Switch active community")
+	public ResponseEntity<ApiResponse<UUID>> switchCommunity(
+		@Parameter(description = "Community ID to switch to", example = "550e8400-e29b-41d4-a716-446655440000") @PathVariable UUID communityId) {
 		communityService.switchCommunity(communityId);
 		return ResponseEntity.ok(ApiResponse.success("Community switched successfully", communityId));
 	}
