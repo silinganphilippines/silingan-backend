@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.ria.olita.tech.silingan.entity.CommunityRole;
+import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
 import com.ria.olita.tech.silingan.repository.UserRepository;
 
 @Component
@@ -64,8 +64,8 @@ public class UserContextFilter extends OncePerRequestFilter {
 			.orElseThrow(() -> new NotFoundException("User not found"));
 
 		String communityId = extractStringClaim(claims, "communityId");
-		List<CommunityRole> roles = extractRealmRoles(claims).stream()
-			.map(CommunityRole::valueOf)
+		List<SilinganRealmRole> roles = extractRealmRoles(claims).stream()
+			.map(SilinganRealmRole::valueOf)
 			.toList();
 
 

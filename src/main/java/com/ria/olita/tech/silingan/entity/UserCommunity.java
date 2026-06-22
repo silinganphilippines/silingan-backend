@@ -51,7 +51,7 @@ public class UserCommunity {
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
-	private CommunityRole role;
+	private SilinganRealmRole role;
 
 	@CreationTimestamp
 	@Column(name = "joined_at", columnDefinition = "TIMESTAMP")

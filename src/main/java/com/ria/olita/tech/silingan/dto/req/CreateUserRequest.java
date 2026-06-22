@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 
 
-import com.ria.olita.tech.silingan.entity.CommunityRole;
+import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
 
 @Builder
 public record CreateUserRequest(
@@ -17,7 +17,7 @@ public record CreateUserRequest(
 	String password,
 	boolean enabled,
 	boolean emailVerified,
-	CommunityRole communityRole,
+	SilinganRealmRole communityRole,
 	@NotBlank
 	UUID communityId,
 	AddressRequest address
