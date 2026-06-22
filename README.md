@@ -148,13 +148,12 @@ java -jar target/silingan-0.0.1.jar
 The application will start on port **8082** by default.
 
 
-### H2 Console
+### Swagger UI
 
-For development, the H2 console is available at:
-- URL: http://localhost:8082/h2-console
-- JDBC URL: `jdbc:h2:file:./data/silingan-db`
-- Username: `sa`
-- Password: (empty)
+Once the application is running, you can access the Swagger UI for API documentation and testing:
+
+ http://localhost:8082/swagger-ui/index.html
+
 
 
 ### Initial Data
