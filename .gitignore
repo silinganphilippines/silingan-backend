@@ -5,6 +5,10 @@ bin
 .pmd
 .ruleset
 DECache*.bin
-README.md
 .idea
 /target
+*.iml
+*.log
+.DS_Store
+*.tmp
+*.swp

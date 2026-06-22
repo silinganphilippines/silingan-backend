@@ -9,6 +9,7 @@ import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 
 import org.hibernate.Session;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -36,8 +37,8 @@ public class UserContextFilter extends OncePerRequestFilter {
 	private final EntityManager entityManager;
 
 	@Override
-	protected void doFilterInternal(HttpServletRequest request,
-	                                HttpServletResponse response,
+	protected void doFilterInternal(@NonNull HttpServletRequest request,
+	                                @NonNull HttpServletResponse response,
 	                                FilterChain filterChain) throws ServletException, IOException {
 		try {
 			populateContextFromAuthentication();
