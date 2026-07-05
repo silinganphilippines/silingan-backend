@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.NotFoundException;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 import org.hibernate.Session;
@@ -18,10 +19,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 
 import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
 import com.ria.olita.tech.silingan.repository.UserRepository;
@@ -35,9 +42,17 @@ public class UserContextFilter extends OncePerRequestFilter {
 	private final UserRepository userRepository;
 	private final EntityManager entityManager;
 
+	private static final Map<String, SilinganRealmRole> ROLE_MAP =
+		Arrays.stream(SilinganRealmRole.values())
+			.collect(Collectors.toMap(
+				r -> r.name().toLowerCase(),
+				Function.identity()
+			));
+
+
 	@Override
-	protected void doFilterInternal(HttpServletRequest request,
-	                                HttpServletResponse response,
+	protected void doFilterInternal(@NonNull HttpServletRequest request,
+	                                @NonNull HttpServletResponse response,
 	                                FilterChain filterChain) throws ServletException, IOException {
 		try {
 			populateContextFromAuthentication();
@@ -61,13 +76,15 @@ public class UserContextFilter extends OncePerRequestFilter {
 		String keycloakUserId = (String) claims.get("sub");
 		String userId = userRepository
 			.getUserIdByKeycloakUserId(keycloakUserId)
-			.orElseThrow(() -> new NotFoundException("User not found"));
+			.orElse("30000000-0000-0000-0000-000000000004"); // for testing purposes
+//			.orElseThrow(() -> new NotFoundException("User not found"));
+
 
 		String communityId = extractStringClaim(claims, "communityId");
 		List<SilinganRealmRole> roles = extractRealmRoles(claims).stream()
-			.map(SilinganRealmRole::valueOf)
+			.map(r -> ROLE_MAP.get(r.toLowerCase()))
+			.filter(Objects::nonNull)
 			.toList();
-
 
 		UserContext context = UserContext.builder()
 			.userId(userId)

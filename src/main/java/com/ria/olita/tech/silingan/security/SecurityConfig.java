@@ -5,15 +5,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -165,30 +168,29 @@ public class SecurityConfig {
 	public SecurityFilterChain filterChain(HttpSecurity http, UserContextFilter userContextFilter) throws Exception {
 
 		http
-			// H2 console needs full CSRF disabled
 			.csrf(AbstractHttpConfigurer::disable)
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/public/**", "/auth/register")
 				.permitAll()
-				.requestMatchers("/admin/**")
-				.hasRole("PLATFORM_ADMIN")
-				.requestMatchers("/community-admin/**")
-				.hasRole("COMMUNITY_ADMIN")
-				.requestMatchers("/resident/**")
-				.hasRole("RESIDENT")
+				.requestMatchers(
+					"/v3/api-docs/**",
+					"/swagger-ui.html",
+					"/swagger-ui/**",
+					"/swagger-resources/**",
+					"/webjars/**"
+				)
+				.permitAll()
 				.anyRequest()
 				.authenticated()
 			)
-			// Keep OAuth2 login (Keycloak UI login)
 			.oauth2Login(oauth2 -> oauth2
 				.loginPage("/oauth2/authorization/silingan")
-				.defaultSuccessUrl("/", true)
-			)
-			// Keep JWT resource server for API clients
+				.defaultSuccessUrl("/", true))
 			.oauth2ResourceServer(oauth2 ->
 				oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-			);
-		// Ensure this runs after Bearer token filter
+			).headers(headers -> headers
+				.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
+
 		http.addFilterAfter(userContextFilter, BearerTokenAuthenticationFilter.class);
 
 		return http.build();
