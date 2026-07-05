@@ -53,5 +53,13 @@ public final class UserContextHolder {
 		return context.roles().contains(SilinganRealmRole.COMMUNITY_ADMIN);
 	}
 
+	public static boolean isStaff() {
+		UserContext context = get();
+		if (context == null || context.roles() == null) {
+			return false;
+		}
+		return context.roles().contains(SilinganRealmRole.STAFF);
+	}
+
 
 }

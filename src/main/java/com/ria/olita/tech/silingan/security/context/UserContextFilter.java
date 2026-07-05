@@ -5,7 +5,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.ws.rs.NotFoundException;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +29,9 @@ import java.util.stream.Collectors;
 
 
 import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
+import com.ria.olita.tech.silingan.entity.rbac.CommunityAccess;
+import com.ria.olita.tech.silingan.entity.rbac.PermissionEnum;
+import com.ria.olita.tech.silingan.repository.UserCommunityPermissionRepository;
 import com.ria.olita.tech.silingan.repository.UserRepository;
 
 @Component
@@ -40,6 +41,7 @@ public class UserContextFilter extends OncePerRequestFilter {
 	private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
 
 	private final UserRepository userRepository;
+	private final UserCommunityPermissionRepository permissionRepository;
 	private final EntityManager entityManager;
 
 	private static final Map<String, SilinganRealmRole> ROLE_MAP =
@@ -79,20 +81,32 @@ public class UserContextFilter extends OncePerRequestFilter {
 			.orElse("30000000-0000-0000-0000-000000000004"); // for testing purposes
 //			.orElseThrow(() -> new NotFoundException("User not found"));
 
-
 		String communityId = extractStringClaim(claims, "communityId");
 		List<SilinganRealmRole> roles = extractRealmRoles(claims).stream()
 			.map(r -> ROLE_MAP.get(r.toLowerCase()))
 			.filter(Objects::nonNull)
 			.toList();
 
+		CommunityAccess communityAccess = loadCommunityAccess(userId, communityId);
+
 		UserContext context = UserContext.builder()
 			.userId(userId)
 			.keycloakUserId(keycloakUserId)
 			.communityId(communityId)
 			.roles(roles)
+			.communityAccess(communityAccess)
 			.build();
 		UserContextHolder.set(context);
+	}
+
+	private CommunityAccess loadCommunityAccess(String userId, String communityId) {
+		if (communityId == null) {
+			return null;
+		}
+		UUID userUuid = UUID.fromString(userId);
+		UUID communityUuid = UUID.fromString(communityId);
+		List<PermissionEnum> permissions = permissionRepository.findPermissionsByUserIdAndCommunityId(userUuid, communityUuid);
+		return new CommunityAccess(communityUuid, permissions);
 	}
 
 	@SuppressWarnings("unchecked")

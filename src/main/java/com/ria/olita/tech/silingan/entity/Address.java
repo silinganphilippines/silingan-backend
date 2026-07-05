@@ -12,6 +12,8 @@ import java.util.UUID;
 
 import org.hibernate.annotations.SQLRestriction;
 
+import com.ria.olita.tech.silingan.entity.base.BaseEntity;
+
 
 @Entity
 @Table(name = "addresses")
@@ -21,7 +23,7 @@ import org.hibernate.annotations.SQLRestriction;
 @AllArgsConstructor
 @Builder
 @SQLRestriction("deleted = false")
-public class Address {
+public class Address extends BaseEntity {
 
 	@Id
 	@GeneratedValue

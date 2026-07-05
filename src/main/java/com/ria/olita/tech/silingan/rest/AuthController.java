@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -18,10 +17,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -38,7 +39,7 @@ public class AuthController {
 	@PreAuthorize("hasRole('PLATFORM_ADMIN') or hasRole('COMMUNITY_ADMIN')")
 	@Operation(
 		summary = "Register a new user",
-		requestBody = @RequestBody(
+		requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
 			required = true,
 			content = @Content(
 				schema = @Schema(implementation = CreateUserRequest.class),
@@ -47,27 +48,27 @@ public class AuthController {
 						name = "registerUserExample",
 						summary = "Example user registration",
 						value = """
-							{
-								"username": "jdelacruz",
-								"email": "juan@example.com",
-								"firstName": "Juan",
-								"lastName": "Dela Cruz",
-								"password": "SecurePass123!",
-								"enabled": true,
-								"emailVerified": true,
-								"communityRole": "RESIDENT",
-								"communityId": "550e8400-e29b-41d4-a716-446655440000",
-								"address": {
-									"street": "123 Main St",
-									"barangay": "Poblacion",
-									"city": "Makati",
-									"province": "Metro Manila",
-									"region": 13,
-									"postalCode": "1200",
-									"country": "Philippines"
-								}
-							}
-							"""
+						        {
+						        	"username": "jdelacruz",
+						        	"email": "juan@example.com",
+						        	"firstName": "Juan",
+						        	"lastName": "Dela Cruz",
+						        	"password": "SecurePass123!",
+						        	"enabled": true,
+						        	"emailVerified": true,
+						        	"communityRole": "RESIDENT",
+						        	"communityId": "550e8400-e29b-41d4-a716-446655440000",
+						        	"address": {
+						        		"street": "123 Main St",
+						        		"barangay": "Poblacion",
+						        		"city": "Makati",
+						        		"province": "Metro Manila",
+						        		"region": 13,
+						        		"postalCode": "1200",
+						        		"country": "Philippines"
+						        	}
+						        }
+						        """
 					)
 				}
 			)
@@ -76,6 +77,7 @@ public class AuthController {
 	public ResponseEntity<Map<String, Object>> register(
 		@Valid @RequestBody CreateUserRequest request) {
 		log.info("Registration request received for username: {}", request.username());
+		log.debug("Registration request details: {}", request);
 
 		try {
 			// Register user in Keycloak and database
@@ -90,13 +92,15 @@ public class AuthController {
 				.body(response);
 
 		} catch (Exception e) {
-			log.error("Registration failed: ", e);
+			log.error("Registration failed for user {}: {}", request.username(), e.getMessage());
+			log.error("Stack trace: ", e);
 			Map<String, Object> errorResponse = new HashMap<>();
 			errorResponse.put("success", false);
-			errorResponse.put("message", e.getMessage());
+			errorResponse.put("message", e.getMessage() != null ? e.getMessage() : "An unexpected error occurred");
+			errorResponse.put("errorType", e.getClass()
+				.getSimpleName());
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(errorResponse);
 		}
 	}
-
 }

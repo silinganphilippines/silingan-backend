@@ -42,7 +42,9 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 	@Override
 	public String createUser(CreateUserRequest request) {
-		log.info("Creating user in Keycloak: {}", request.firstName());
+		log.info("Creating user in Keycloak: {}", request.username());
+		log.debug("CreateUserRequest details - enabled: {}, emailVerified: {}, communityRole: {}", 
+			request.enabled(), request.emailVerified(), request.communityRole());
 
 		Keycloak keycloak = getKeycloakClient();
 		RealmResource realmResource = keycloak.realm(keycloakProperties.getRealm());
@@ -55,10 +57,12 @@ public class KeycloakServiceImpl implements KeycloakService {
 		user.setFirstName(request.firstName());
 		user.setLastName(request.lastName());
 		user.setEnabled(request.enabled());
+		user.setEmailVerified(request.emailVerified());
 		user.setRequiredActions(Collections.emptyList());
 
 		// Create the user
 		Response response = usersResource.create(user);
+		log.info("Keycloak create user response status: {}", response.getStatus());
 
 		if (response.getStatus() == 201) {
 			String userId = extractUserId(response);

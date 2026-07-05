@@ -1,5 +1,8 @@
 package com.ria.olita.tech.silingan.entity.rbac;
 
+import lombok.Getter;
+
+@Getter
 public enum Domain {
 	COMMUNITY("community"),
 	RESIDENT("resident"),
@@ -16,9 +19,4 @@ public enum Domain {
 	Domain(String value) {
 		this.value = value;
 	}
-
-	public String getValue() {
-		return value;
-	}
-
 }
