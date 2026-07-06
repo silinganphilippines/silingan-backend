@@ -2,7 +2,7 @@ package com.ria.olita.tech.silingan.service.impl;
 
 import com.ria.olita.tech.silingan.config.KeycloakProperties;
 import com.ria.olita.tech.silingan.dto.req.CreateUserRequest;
-import com.ria.olita.tech.silingan.entity.CommunityRole;
+import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
 import com.ria.olita.tech.silingan.exception.ConflictException;
 import com.ria.olita.tech.silingan.repository.UserCommunityRepository;
 import com.ria.olita.tech.silingan.service.KeycloakService;
@@ -17,7 +17,6 @@ import org.keycloak.admin.client.resource.GroupsResource;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
-import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -43,7 +42,9 @@ public class KeycloakServiceImpl implements KeycloakService {
 
 	@Override
 	public String createUser(CreateUserRequest request) {
-		log.info("Creating user in Keycloak: {}", request.firstName());
+		log.info("Creating user in Keycloak: {}", request.username());
+		log.debug("CreateUserRequest details - enabled: {}, emailVerified: {}, communityRole: {}", 
+			request.enabled(), request.emailVerified(), request.communityRole());
 
 		Keycloak keycloak = getKeycloakClient();
 		RealmResource realmResource = keycloak.realm(keycloakProperties.getRealm());
@@ -56,10 +57,12 @@ public class KeycloakServiceImpl implements KeycloakService {
 		user.setFirstName(request.firstName());
 		user.setLastName(request.lastName());
 		user.setEnabled(request.enabled());
+		user.setEmailVerified(request.emailVerified());
 		user.setRequiredActions(Collections.emptyList());
 
 		// Create the user
 		Response response = usersResource.create(user);
+		log.info("Keycloak create user response status: {}", response.getStatus());
 
 		if (response.getStatus() == 201) {
 			String userId = extractUserId(response);
@@ -70,13 +73,13 @@ public class KeycloakServiceImpl implements KeycloakService {
 				.toString())));
 
 			if (request.communityRole() != null) {
-				if (request.communityRole().equals(CommunityRole.COMMUNITY_ADMIN) && userCommunityRepository.hasRoleInCommunity(request.communityId(), request.communityRole())) {
+				if (request.communityRole().equals(SilinganRealmRole.COMMUNITY_ADMIN) && userCommunityRepository.hasRoleInCommunity(request.communityId(), request.communityRole())) {
 					throw new ConflictException("Community already has a COMMUNITY_ADMIN assigned");
 				}
 				assignRealmRole(realmResource, userId, request.communityRole().name());
 			} else {
 				// Assign default RESIDENT role to the user
-				assignRealmRole(realmResource, userId, CommunityRole.RESIDENT.name());
+				assignRealmRole(realmResource, userId, SilinganRealmRole.RESIDENT.name());
 			}
 			return userId;
 		} else if (response.getStatus() == 409) {

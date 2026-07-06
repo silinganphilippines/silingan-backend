@@ -1,8 +1,8 @@
 INSERT INTO addresses (
-    id, street, barangay, city, province, region, postal_code, country, tower, unit_number, floor, latitude, longitude
+    id, street, barangay, city, province, region, postal_code, country, tower, unit_number, floor, latitude, longitude,created_at, updated_at, deleted
 ) VALUES
-    ('10000000-0000-0000-0000-000000000001', '123 Mabini Street', 'San Isidro', 'Quezon City', 'Metro Manila', 'NCR', '1100', 'Philippines', NULL, NULL, NULL,12.0435,11.3533),
-    ('10000000-0000-0000-0000-000000000002', '45 Katipunan Avenue', 'Bagumbayan', 'Quezon City', 'Metro Manila', 'NCR', '1110', 'Philippines', 'Tower A', '1203', '12',98.3423,45.5353);
+    ('10000000-0000-0000-0000-000000000001', '123 Mabini Street', 'San Isidro', 'Quezon City', 'Metro Manila', 'NCR', '1100', 'Philippines', NULL, NULL, NULL,12.0435,11.3533,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,FALSE),
+    ('10000000-0000-0000-0000-000000000002', '45 Katipunan Avenue', 'Bagumbayan', 'Quezon City', 'Metro Manila', 'NCR', '1110', 'Philippines', 'Tower A', '1203', '12',98.3423,45.5353,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,FALSE);
 
 INSERT INTO tenants (
     id, name, contact_person, contact_email, contact_number, status, address_id, created_at, updated_at, deleted
@@ -22,7 +22,7 @@ INSERT INTO users (
     ('30000000-0000-0000-0000-000000000001', 'kc-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
     ('30000000-0000-0000-0000-000000000002', 'kc-resident-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
     ('30000000-0000-0000-0000-000000000003', 'kc-resident-002', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
-    ('30000000-0000-0000-0000-000000000004', '4056393a-e5ba-4850-ba99-efab6d71a74a', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE);
+    ('30000000-0000-0000-0000-000000000004', '9d248a49-e614-4d86-81ba-3b473fb7831e', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE);
 
 INSERT INTO user_communities (
     id, user_id, community_id, role, joined_at
@@ -30,6 +30,7 @@ INSERT INTO user_communities (
     ('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'PLATFORM_ADMIN', CURRENT_TIMESTAMP),
     ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 'COMMUNITY_ADMIN', CURRENT_TIMESTAMP),
     ('40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', 'RESIDENT', CURRENT_TIMESTAMP);
+
 
 INSERT INTO issue_categories (
     id, name, description, community_id, display_order, is_active, created_at, updated_at, deleted

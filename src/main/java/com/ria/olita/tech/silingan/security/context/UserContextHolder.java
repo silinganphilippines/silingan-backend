@@ -3,7 +3,7 @@ package com.ria.olita.tech.silingan.security.context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ria.olita.tech.silingan.entity.CommunityRole;
+import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
 
 /**
  * ThreadLocal holder for {@link UserContext}. Ensures isolation per request/thread.
@@ -41,7 +41,25 @@ public final class UserContextHolder {
 			return false;
 		}
 
-		return context.roles().contains(CommunityRole.PLATFORM_ADMIN);
+		return context.roles().contains(SilinganRealmRole.PLATFORM_ADMIN);
 	}
+
+
+	public static boolean isCommunityAdmin() {
+		UserContext context = get();
+		if (context == null || context.roles() == null) {
+			return false;
+		}
+		return context.roles().contains(SilinganRealmRole.COMMUNITY_ADMIN);
+	}
+
+	public static boolean isStaff() {
+		UserContext context = get();
+		if (context == null || context.roles() == null) {
+			return false;
+		}
+		return context.roles().contains(SilinganRealmRole.STAFF);
+	}
+
 
 }

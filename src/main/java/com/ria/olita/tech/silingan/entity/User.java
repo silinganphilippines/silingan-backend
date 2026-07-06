@@ -62,6 +62,7 @@ public class User extends BaseEntity {
 		orphanRemoval = true,
 		fetch = FetchType.LAZY
 	)
+	@Builder.Default
 	private List<UserCommunity> userCommunities = new ArrayList<>();
 
 	public void addCommunity(UserCommunity uc) {

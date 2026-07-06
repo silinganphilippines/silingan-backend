@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import com.ria.olita.tech.silingan.entity.CommunityRole;
+import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
 import com.ria.olita.tech.silingan.exception.ValidationException;
 import com.ria.olita.tech.silingan.security.context.UserContext;
 import com.ria.olita.tech.silingan.security.context.UserContextHolder;
@@ -55,7 +55,7 @@ class CommunityStatementInspectorTest {
 	void shouldHandleQueriesBasedOnRole(String role, boolean shouldPass) {
 
 		UserContext context = UserContext.builder()
-			.roles(List.of(CommunityRole.valueOf(role)))
+			.roles(List.of(SilinganRealmRole.valueOf(role)))
 			.build();
 
 		UserContextHolder.set(context);

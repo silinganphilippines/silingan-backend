@@ -1,10 +1,8 @@
 package com.ria.olita.tech.silingan.entity;
 
-
-import java.time.LocalDateTime;
 import java.util.UUID;
 
-import org.hibernate.annotations.CreationTimestamp;
+import com.ria.olita.tech.silingan.entity.rbac.PermissionEnum;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -25,9 +23,9 @@ import lombok.Setter;
 
 @Entity
 @Table(
-	name = "user_communities",
+	name = "user_community_permissions",
 	uniqueConstraints = {
-		@UniqueConstraint(columnNames = {"user_id", "community_id"})
+		@UniqueConstraint(columnNames = {"user_id", "community_id", "permission"})
 	}
 )
 @Getter
@@ -35,7 +33,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserCommunity {
+public class UserCommunityPermission {
 
 	@Id
 	@GeneratedValue
@@ -45,15 +43,18 @@ public class UserCommunity {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
+	@Column(name = "user_id", insertable = false, updatable = false)
+	private UUID userId;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "community_id", nullable = false)
 	private Community community;
 
+	@Column(name = "community_id", insertable = false, updatable = false)
+	private UUID communityId;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
-	private SilinganRealmRole role;
-
-	@CreationTimestamp
-	@Column(name = "joined_at", columnDefinition = "TIMESTAMP")
-	private LocalDateTime joinedAt;
+	private PermissionEnum permission;
 }
+

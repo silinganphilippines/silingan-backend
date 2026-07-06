@@ -1,6 +1,8 @@
 package com.ria.olita.tech.silingan.exception;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -16,11 +18,14 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	@ExceptionHandler(ServiceException.class)
 	public ResponseEntity<ApiError> handleServiceException(
 		ServiceException ex,
 		HttpServletRequest request) {
+
+		log.warn("ServiceException at {}: {} - {}", request.getRequestURI(), ex.getCode(), ex.getMessage());
 
 		ApiError error = new ApiError(
 			ex.getCode(),
@@ -38,6 +43,8 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiError> handleValidationErrors(
 		MethodArgumentNotValidException ex,
 		HttpServletRequest request) {
+
+		log.warn("Validation error at {}: {}", request.getRequestURI(), ex.getMessage());
 
 		Map<String, String> errors = new HashMap<>();
 
@@ -63,8 +70,10 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ApiError> handleInvalidJson(
-		HttpMessageNotReadableException ignoredEx,
+		HttpMessageNotReadableException ex,
 		HttpServletRequest request) {
+
+		log.warn("Invalid JSON at {}: {}", request.getRequestURI(), ex.getMessage());
 
 		ApiError error = new ApiError(
 			"INVALID_REQUEST",
@@ -79,8 +88,11 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiError> handleGeneral(
-		Exception ignoredEx,
+		Exception ex,
 		HttpServletRequest request) {
+
+		log.error("Unhandled exception at {}: {}", request.getRequestURI(), ex.getMessage());
+		log.error("Stack trace: ", ex);
 
 		ApiError error = new ApiError(
 			"INTERNAL_ERROR",
