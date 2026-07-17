@@ -3,7 +3,9 @@ package com.ria.olita.tech.silingan.dto.req;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Builder;
 
 
@@ -16,6 +18,12 @@ public record CreateUserRequest(
 	@Schema(example = "Juan") String firstName,
 	@Schema(example = "Dela Cruz") String lastName,
 	@Schema(example = "SecurePass123!") String password,
+	@NotBlank
+	@Pattern(
+		regexp = "^(\\+63|0)9\\d{9}$",
+		message = "Invalid Philippine mobile number format. Expected: +639XXXXXXXXX or 09XXXXXXXXX"
+	)
+	@Schema(example = "+639171234567") String mobileNumber,
 	@Schema(example = "true", defaultValue = "true") Boolean enabled,
 	@Schema(example = "true", defaultValue = "false") Boolean emailVerified,
 	@Schema(example = "RESIDENT") SilinganRealmRole communityRole,

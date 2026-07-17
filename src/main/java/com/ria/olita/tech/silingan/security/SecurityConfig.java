@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.ria.olita.tech.silingan.config.KeycloakProperties;
+import com.ria.olita.tech.silingan.security.context.OtpVerificationFilter;
 import com.ria.olita.tech.silingan.security.context.UserContextFilter;
 
 import lombok.RequiredArgsConstructor;
@@ -60,9 +62,9 @@ public class SecurityConfig {
 		return converter;
 	}
 
-/* =============================
-   Helper Methods
-   ============================= */
+	/* =============================
+	   Helper Methods
+	   ============================= */
 
 	private void logJwtClaims(Jwt jwt, Logger log) {
 		log.debug("=== JWT Claims Debug ===");
@@ -163,33 +165,52 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http, UserContextFilter userContextFilter) throws Exception {
+	public SecurityFilterChain filterChain(HttpSecurity http,
+	                                       UserContextFilter userContextFilter,
+	                                       OtpVerificationFilter otpVerificationFilter,
+	                                       RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+	                                       RestAccessDeniedHandler restAccessDeniedHandler) throws Exception {
 
 		http
 			.csrf(AbstractHttpConfigurer::disable)
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.exceptionHandling(ex -> ex
+				.authenticationEntryPoint(restAuthenticationEntryPoint)
+				.accessDeniedHandler(restAccessDeniedHandler)
+			)
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/public/**", "/auth/register")
+				.requestMatchers("/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/token/by-registration-proof")
+				.permitAll()
+				.requestMatchers(
+					"/api/v1/auth/otp/request",
+					"/api/v1/auth/otp/verify-registration"
+				)
 				.permitAll()
 				.requestMatchers(
 					"/v3/api-docs/**",
 					"/swagger-ui.html",
 					"/swagger-ui/**",
 					"/swagger-resources/**",
-					"/webjars/**"
+					"/webjars/**",
+					"/h2-console/**",
+					"/error"
 				)
 				.permitAll()
+				.requestMatchers("/api/v1/auth/register")
+				.authenticated()
+				.requestMatchers("/api/v1/auth/otp/**")
+				.authenticated()
 				.anyRequest()
 				.authenticated()
 			)
-			.oauth2Login(oauth2 -> oauth2
-				.loginPage("/oauth2/authorization/silingan")
-				.defaultSuccessUrl("/", true))
 			.oauth2ResourceServer(oauth2 ->
 				oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-			).headers(headers -> headers
+			)
+			.headers(headers -> headers
 				.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
 
 		http.addFilterAfter(userContextFilter, BearerTokenAuthenticationFilter.class);
+		http.addFilterAfter(otpVerificationFilter, UserContextFilter.class);
 
 		return http.build();
 	}

@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/communities")
+@RequestMapping("/api/v1/admin/communities")
 @RequiredArgsConstructor
 @Tag(name = "Community", description = "Community management APIs")
 public class CommunityController {

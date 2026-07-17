@@ -31,6 +31,10 @@ public enum PermissionEnum {
 	DOCUMENT_MANAGE("document:manage");
 
 
+
+
+
+
 	private final String value;
 
 	PermissionEnum(String value) {

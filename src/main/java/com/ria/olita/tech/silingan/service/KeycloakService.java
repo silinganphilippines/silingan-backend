@@ -9,7 +9,7 @@ public interface KeycloakService {
 
 	String createUser(CreateUserRequest request);
 
-	String createGroup(String groupName);
+	void createGroup(String groupName);
 
 	void updateUserAttributes(String keycloakUserId, Map<String, List<String>> attributes);
 

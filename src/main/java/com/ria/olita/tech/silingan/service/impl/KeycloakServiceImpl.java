@@ -18,6 +18,7 @@ import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.slf4j.Logger;
@@ -60,6 +61,14 @@ public class KeycloakServiceImpl implements KeycloakService {
 		user.setEmailVerified(request.emailVerified());
 		user.setRequiredActions(Collections.emptyList());
 
+		if (request.password() != null && !request.password().isBlank()) {
+			CredentialRepresentation credential = new CredentialRepresentation();
+			credential.setType(CredentialRepresentation.PASSWORD);
+			credential.setValue(request.password());
+			credential.setTemporary(false);
+			user.setCredentials(Collections.singletonList(credential));
+		}
+
 		// Create the user
 		Response response = usersResource.create(user);
 		log.info("Keycloak create user response status: {}", response.getStatus());
@@ -68,9 +77,12 @@ public class KeycloakServiceImpl implements KeycloakService {
 			String userId = extractUserId(response);
 			log.info("User created successfully with ID: {}", userId);
 
-			// add communityId as attr in kc
-			updateUserAttributes(userId, Map.of("communityId", List.of(request.communityId()
-				.toString())));
+			Map<String, List<String>> keycloakAttributes = new HashMap<>();
+			keycloakAttributes.put("communityId", List.of(request.communityId().toString()));
+			keycloakAttributes.put("mobileNumber", List.of(request.mobileNumber()));
+			keycloakAttributes.put("phone_number", List.of(request.mobileNumber()));
+			keycloakAttributes.put("phone_number_verified", List.of("true"));
+			updateUserAttributes(userId, keycloakAttributes);
 
 			if (request.communityRole() != null) {
 				if (request.communityRole().equals(SilinganRealmRole.COMMUNITY_ADMIN) && userCommunityRepository.hasRoleInCommunity(request.communityId(), request.communityRole())) {
@@ -184,7 +196,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 	}
 
 	@Override
-	public String createGroup(String groupName) {
+	public void createGroup(String groupName) {
 		log.info("Creating group in Keycloak: {}", groupName);
 
 		Keycloak keycloak = getKeycloakClient();
@@ -202,7 +214,6 @@ public class KeycloakServiceImpl implements KeycloakService {
 			String locationHeader = response.getHeaderString("Location");
 			String groupId = locationHeader.substring(locationHeader.lastIndexOf("/") + 1);
 			log.info("Group created successfully with ID: {}", groupId);
-			return groupId;
 		} else if (response.getStatus() == 409) {
 			log.error("Group already exists: {}", groupName);
 			throw new RuntimeException("Group already exists: " + groupName);

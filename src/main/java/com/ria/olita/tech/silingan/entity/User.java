@@ -53,6 +53,8 @@ public class User extends BaseEntity {
 
 	private String username;
 	private String email;
+	@Column(name = "mobile_number", length = 20)
+	private String mobileNumber;
 	private String firstName;
 	private String lastName;
 
