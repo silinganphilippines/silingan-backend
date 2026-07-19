@@ -27,6 +27,15 @@ public class OtpVerificationStateServiceImpl implements OtpVerificationStateServ
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public boolean isVerifiedForUser(String keycloakUserId) {
+		return otpVerificationStateRepository.existsByKeycloakUserIdAndOtpVerifiedTrueAndExpiresAtAfter(
+			keycloakUserId,
+			Instant.now()
+		);
+	}
+
+	@Override
 	@Transactional
 	public void markVerified(String keycloakUserId, String tokenId, Instant expiresAt) {
 		clearVerification(keycloakUserId, tokenId);

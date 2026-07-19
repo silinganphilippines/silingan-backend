@@ -41,6 +41,7 @@ public class OtpVerificationFilter extends OncePerRequestFilter {
 		this.excludedPatterns = List.of(
 			"/api/v1/admin/communities/**",
 			"/api/v1/tenants/**",
+			"/api/v1/auth/login/otp",
 			"/api/v1/auth/otp/**",
 			"/public/**",
 			"/v3/api-docs/**",
@@ -70,13 +71,17 @@ public class OtpVerificationFilter extends OncePerRequestFilter {
 		}
 
 		Jwt jwt = jwtAuthenticationToken.getToken();
-		String keycloakUserId = jwt.getClaimAsString("sub");
+		String keycloakUserId = jwt.getClaimAsString("keycloakId");
+		if (keycloakUserId == null || keycloakUserId.isBlank()) {
+			keycloakUserId = jwt.getClaimAsString("sub");
+		}
 		if (keycloakUserId == null || keycloakUserId.isBlank()) {
 			filterChain.doFilter(request, response);
 			return;
 		}
 
-		boolean otpVerified = otpVerificationStateService.isVerified(keycloakUserId, jwt.getId());
+		boolean otpVerified = otpVerificationStateService.isVerified(keycloakUserId, jwt.getId())
+			|| otpVerificationStateService.isVerifiedForUser(keycloakUserId);
 		if (otpVerified) {
 			filterChain.doFilter(request, response);
 			return;
@@ -93,6 +98,11 @@ public class OtpVerificationFilter extends OncePerRequestFilter {
 
 		String path = request.getRequestURI();
 		if (path == null || path.isBlank()) {
+			return false;
+		}
+
+		// OTP enforcement is only for backend API routes.
+		if (!path.startsWith("/api/")) {
 			return false;
 		}
 

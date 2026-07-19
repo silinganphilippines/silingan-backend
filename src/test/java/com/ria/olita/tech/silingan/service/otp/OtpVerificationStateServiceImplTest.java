@@ -55,4 +55,15 @@ class OtpVerificationStateServiceImplTest {
 		verify(repository).deleteByKeycloakUserIdAndTokenIdIsNull("user-1");
 		verify(repository, never()).deleteByKeycloakUserIdAndTokenId(any(), any());
 	}
+
+	@Test
+	void shouldReturnTrueWhenUserHasActiveOtpVerification() {
+		OtpVerificationStateRepository repository = Mockito.mock(OtpVerificationStateRepository.class);
+		OtpVerificationStateServiceImpl service = new OtpVerificationStateServiceImpl(repository);
+
+		when(repository.existsByKeycloakUserIdAndOtpVerifiedTrueAndExpiresAtAfter(eq("user-1"), any(Instant.class)))
+			.thenReturn(true);
+
+		assertThat(service.isVerifiedForUser("user-1")).isTrue();
+	}
 }

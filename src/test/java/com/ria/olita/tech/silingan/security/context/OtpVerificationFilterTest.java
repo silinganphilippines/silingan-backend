@@ -30,6 +30,7 @@ class OtpVerificationFilterTest {
 	void shouldBlockProtectedPathWhenOtpNotVerified() throws Exception {
 		OtpVerificationStateService stateService = Mockito.mock(OtpVerificationStateService.class);
 		when(stateService.isVerified("kc-user-1", "token-1")).thenReturn(false);
+		when(stateService.isVerifiedForUser("kc-user-1")).thenReturn(false);
 
 		OtpVerificationFilter filter = new OtpVerificationFilter(stateService, new ObjectMapper());
 
@@ -80,6 +81,7 @@ class OtpVerificationFilterTest {
 	void shouldBypassOtpCheckForOtpEndpoints() throws Exception {
 		OtpVerificationStateService stateService = Mockito.mock(OtpVerificationStateService.class);
 		when(stateService.isVerified("kc-user-1", "token-1")).thenReturn(false);
+		when(stateService.isVerifiedForUser("kc-user-1")).thenReturn(false);
 
 		OtpVerificationFilter filter = new OtpVerificationFilter(stateService, new ObjectMapper());
 
@@ -93,6 +95,55 @@ class OtpVerificationFilterTest {
 		SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
 
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/otp/status");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		MockFilterChain chain = new MockFilterChain();
+
+		filter.doFilter(request, response, chain);
+
+		assertThat(response.getStatus()).isEqualTo(200);
+	}
+
+	@Test
+	void shouldBypassOtpCheckForRootPath() throws Exception {
+		OtpVerificationStateService stateService = Mockito.mock(OtpVerificationStateService.class);
+		OtpVerificationFilter filter = new OtpVerificationFilter(stateService, new ObjectMapper());
+
+		Jwt jwt = Jwt.withTokenValue("token")
+			.header("alg", "none")
+			.subject("kc-user-1")
+			.expiresAt(Instant.now().plusSeconds(300))
+			.claim("jti", "token-1")
+			.claim("scope", "openid")
+			.build();
+		SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		MockFilterChain chain = new MockFilterChain();
+
+		filter.doFilter(request, response, chain);
+
+		assertThat(response.getStatus()).isEqualTo(200);
+	}
+
+	@Test
+	void shouldAllowProtectedPathWhenUserLevelOtpVerificationExists() throws Exception {
+		OtpVerificationStateService stateService = Mockito.mock(OtpVerificationStateService.class);
+		when(stateService.isVerified("kc-user-1", "token-2")).thenReturn(false);
+		when(stateService.isVerifiedForUser("kc-user-1")).thenReturn(true);
+
+		OtpVerificationFilter filter = new OtpVerificationFilter(stateService, new ObjectMapper());
+
+		Jwt jwt = Jwt.withTokenValue("token")
+			.header("alg", "none")
+			.subject("kc-user-1")
+			.expiresAt(Instant.now().plusSeconds(300))
+			.claim("jti", "token-2")
+			.claim("scope", "openid")
+			.build();
+		SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/payments/1");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		MockFilterChain chain = new MockFilterChain();
 

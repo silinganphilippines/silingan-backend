@@ -24,10 +24,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class OtpCacheConfig {
 
-    public static final String OTP_CACHE_NAME = "otpCache";
-    public static final String COOLDOWN_CACHE_NAME = "cooldownCache";
-    public static final String REGISTRATION_OTP_PROOF_CACHE_NAME = "registrationOtpProofCache";
-
     private final OtpProperties otpProperties;
 
     /**

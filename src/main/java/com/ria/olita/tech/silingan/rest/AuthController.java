@@ -1,11 +1,10 @@
 package com.ria.olita.tech.silingan.rest;
 
 import com.ria.olita.tech.silingan.dto.req.CreateUserRequest;
-import com.ria.olita.tech.silingan.dto.req.RegistrationProofTokenRequest;
-import com.ria.olita.tech.silingan.dto.res.AuthTokenResponse;
-import com.ria.olita.tech.silingan.service.auth.RegistrationAuthProofService;
-import com.ria.olita.tech.silingan.service.auth.RegistrationTokenExchangeService;
+import com.ria.olita.tech.silingan.dto.req.OtpVerifyRequest;
+import com.ria.olita.tech.silingan.dto.res.LoginResponse;
 import com.ria.olita.tech.silingan.service.UserService;
+import com.ria.olita.tech.silingan.service.auth.AuthenticationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -25,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,8 +37,7 @@ public class AuthController {
 	private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
 	private final UserService userService;
-	private final RegistrationAuthProofService registrationAuthProofService;
-	private final RegistrationTokenExchangeService registrationTokenExchangeService;
+	private final AuthenticationService authenticationService;
 
 	@PostMapping("/register")
 	@PreAuthorize("hasRole('PLATFORM_ADMIN') or hasRole('COMMUNITY_ADMIN')")
@@ -118,16 +117,21 @@ public class AuthController {
 
 		try {
 			userService.createSelfServiceUser(request);
-			String registrationAuthProof = registrationAuthProofService.issueProof(request.username(), request.password());
 
-			Map<String, Object> response = new HashMap<>();
-			response.put("success", true);
-			response.put("message", "User registered successfully");
-			response.put("username", request.username());
-			response.put("registrationAuthProof", registrationAuthProof);
+			Map<String, Object> payload = new HashMap<>();
+			payload.put("success", true);
+			payload.put("message", "User registered successfully");
+			payload.put("username", request.username());
+
+			LoginResponse response = authenticationService.issueTokenForMobile(request.mobileNumber(),request.communityId());
+			payload.put("login", response);
+			payload.put("accessToken", response.accessToken());
+			payload.put("tokenType", response.tokenType());
+			payload.put("expiresIn", response.expiresIn());
+			payload.put("roles", response.roles());
 
 			return ResponseEntity.status(HttpStatus.CREATED)
-				.body(response);
+				.body(payload);
 		} catch (Exception e) {
 			log.error("Self-service registration failed for user {}: {}", request.username(), e.getMessage());
 			Map<String, Object> errorResponse = new HashMap<>();
@@ -139,12 +143,28 @@ public class AuthController {
 		}
 	}
 
-	@PostMapping("/token/by-registration-proof")
-	@Operation(summary = "Issue token using registration proof", description = "Exchanges one-time registration proof for access and refresh tokens")
-	public ResponseEntity<AuthTokenResponse> tokenByRegistrationProof(
-		@Valid @RequestBody RegistrationProofTokenRequest request) {
-		return ResponseEntity.ok(
-			registrationTokenExchangeService.exchangeByRegistrationProof(request.registrationAuthProof())
-		);
+
+	@PostMapping("/login/otp")
+	@Operation(summary = "Login with OTP", description = "Verifies OTP and returns backend-issued JWT")
+	public ResponseEntity<LoginResponse> loginWithOtp(
+		@Valid @RequestBody OtpVerifyRequest request,
+		HttpServletRequest httpRequest) {
+		return ResponseEntity.ok(authenticationService.loginWithOtp(
+			request,
+			getClientIpAddress(httpRequest),
+			httpRequest.getHeader("User-Agent")
+		));
+	}
+
+	private String getClientIpAddress(HttpServletRequest request) {
+		String xForwardedFor = request.getHeader("X-Forwarded-For");
+		if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+			return xForwardedFor.split(",")[0].trim();
+		}
+		String xRealIp = request.getHeader("X-Real-IP");
+		if (xRealIp != null && !xRealIp.isEmpty()) {
+			return xRealIp;
+		}
+		return request.getRemoteAddr();
 	}
 }

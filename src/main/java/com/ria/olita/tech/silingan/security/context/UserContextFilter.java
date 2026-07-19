@@ -75,11 +75,12 @@ public class UserContextFilter extends OncePerRequestFilter {
 
 		Map<String, Object> claims = jwtAuth.getToken()
 			.getClaims();
-		String keycloakUserId = (String) claims.get("sub");
-		String userId = userRepository
-			.getUserIdByKeycloakUserId(keycloakUserId)
-			.orElse("30000000-0000-0000-0000-000000000004"); // for testing purposes
-//			.orElseThrow(() -> new NotFoundException("User not found"));
+		String keycloakUserId = extractStringClaim(claims, "keycloakId");
+
+		String userId;
+			userId = userRepository
+				.getUserIdByKeycloakUserId(keycloakUserId)
+				.orElse("30000000-0000-0000-0000-000000000004"); // for testing purposes
 
 		String communityId = extractStringClaim(claims, "communityId");
 		List<SilinganRealmRole> roles = extractRealmRoles(claims).stream()
@@ -127,7 +128,7 @@ public class UserContextFilter extends OncePerRequestFilter {
 		}
 
 		if (nestedValue instanceof List<?> values && !values.isEmpty()) {
-			Object first = values.get(0);
+			Object first = values.getFirst();
 			return first != null ? first.toString() : null;
 		}
 
@@ -136,6 +137,11 @@ public class UserContextFilter extends OncePerRequestFilter {
 
 	@SuppressWarnings("unchecked")
 	private List<String> extractRealmRoles(Map<String, Object> claims) {
+		Object directRoles = claims.get("roles");
+		if (directRoles instanceof List<?> roleList) {
+			return roleList.stream().map(String::valueOf).toList();
+		}
+
 		return Optional.ofNullable(claims.get("realm_access"))
 			.filter(Map.class::isInstance)
 			.map(realmAccess -> (Map<String, Object>) realmAccess)
@@ -143,6 +149,18 @@ public class UserContextFilter extends OncePerRequestFilter {
 			.filter(List.class::isInstance)
 			.map(list -> (List<String>) list)
 			.orElse(List.of());
+	}
+
+	private boolean isUuid(String value) {
+		if (value == null || value.isBlank()) {
+			return false;
+		}
+		try {
+			UUID.fromString(value);
+			return true;
+		} catch (IllegalArgumentException ex) {
+			return false;
+		}
 	}
 
 

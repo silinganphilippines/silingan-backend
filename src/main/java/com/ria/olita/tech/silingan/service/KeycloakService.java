@@ -13,4 +13,8 @@ public interface KeycloakService {
 
 	void updateUserAttributes(String keycloakUserId, Map<String, List<String>> attributes);
 
+	Map<String, List<String>> getUserAttributes(String keycloakUserId);
+
+	List<String> getRealmRoles(String keycloakUserId);
+
 }

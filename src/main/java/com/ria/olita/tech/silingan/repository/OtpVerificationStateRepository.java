@@ -17,6 +17,8 @@ public interface OtpVerificationStateRepository extends JpaRepository<OtpVerific
 		Instant now
 	);
 
+	boolean existsByKeycloakUserIdAndOtpVerifiedTrueAndExpiresAtAfter(String keycloakUserId, Instant now);
+
 	void deleteByKeycloakUserIdAndTokenId(String keycloakUserId, String tokenId);
 
 	void deleteByKeycloakUserIdAndTokenIdIsNull(String keycloakUserId);

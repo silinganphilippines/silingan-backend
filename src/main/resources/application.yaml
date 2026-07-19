@@ -89,6 +89,11 @@ otp:
   cache:
     max-size: 10000
 
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-change-me-please-at-least-32-bytes}
+  issuer: ${JWT_ISSUER:silingan-backend}
+  access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:3600}
+
 sms:
   provider: semaphore
   # Temporary toggle to keep OTP happy-path while SMS provider/sender-name setup is pending.

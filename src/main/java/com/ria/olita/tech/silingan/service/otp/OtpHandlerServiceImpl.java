@@ -92,7 +92,10 @@ public class OtpHandlerServiceImpl implements OtpHandlerService {
 		}
 
 		Jwt jwt = jwtAuthenticationToken.getToken();
-		String keycloakUserId = jwt.getClaimAsString("sub");
+		String keycloakUserId = jwt.getClaimAsString("keycloakId");
+		if (keycloakUserId == null || keycloakUserId.isBlank()) {
+			keycloakUserId = jwt.getClaimAsString("sub");
+		}
 		if (keycloakUserId == null || keycloakUserId.isBlank()) {
 			throw new UnauthorizedException("Authenticated token missing 'sub' claim");
 		}

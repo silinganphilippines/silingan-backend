@@ -13,6 +13,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -46,6 +47,10 @@ public class SecurityConfig {
 
 			List<GrantedAuthority> authorities = new ArrayList<>();
 
+			extractBackendRoles(jwt, log).forEach(role ->
+				authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+			);
+
 			extractRealmRoles(jwt, log).forEach(role ->
 				authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
 			);
@@ -65,6 +70,15 @@ public class SecurityConfig {
 	/* =============================
 	   Helper Methods
 	   ============================= */
+
+	private List<String> extractBackendRoles(Jwt jwt, Logger log) {
+		List<String> roles = jwt.getClaimAsStringList("roles");
+		if (roles == null) {
+			return List.of();
+		}
+		log.debug("Extracted backend roles from JWT: {}", roles);
+		return roles;
+	}
 
 	private void logJwtClaims(Jwt jwt, Logger log) {
 		log.debug("=== JWT Claims Debug ===");
@@ -169,7 +183,8 @@ public class SecurityConfig {
 	                                       UserContextFilter userContextFilter,
 	                                       OtpVerificationFilter otpVerificationFilter,
 	                                       RestAuthenticationEntryPoint restAuthenticationEntryPoint,
-	                                       RestAccessDeniedHandler restAccessDeniedHandler) throws Exception {
+	                                       RestAccessDeniedHandler restAccessDeniedHandler,
+	                                       JwtDecoder jwtDecoder) throws Exception {
 
 		http
 			.csrf(AbstractHttpConfigurer::disable)
@@ -179,7 +194,7 @@ public class SecurityConfig {
 				.accessDeniedHandler(restAccessDeniedHandler)
 			)
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/token/by-registration-proof")
+				.requestMatchers("/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/login/otp")
 				.permitAll()
 				.requestMatchers(
 					"/api/v1/auth/otp/request",
@@ -204,7 +219,10 @@ public class SecurityConfig {
 				.authenticated()
 			)
 			.oauth2ResourceServer(oauth2 ->
-				oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+				oauth2.jwt(jwt -> jwt
+					.decoder(jwtDecoder)
+					.jwtAuthenticationConverter(jwtAuthenticationConverter())
+				)
 			)
 			.headers(headers -> headers
 				.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));

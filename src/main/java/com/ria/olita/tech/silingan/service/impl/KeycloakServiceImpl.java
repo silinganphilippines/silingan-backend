@@ -80,8 +80,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 			Map<String, List<String>> keycloakAttributes = new HashMap<>();
 			keycloakAttributes.put("communityId", List.of(request.communityId().toString()));
 			keycloakAttributes.put("mobileNumber", List.of(request.mobileNumber()));
-			keycloakAttributes.put("phone_number", List.of(request.mobileNumber()));
-			keycloakAttributes.put("phone_number_verified", List.of("true"));
+			keycloakAttributes.put("mobile_number_verified", List.of("true"));
 			updateUserAttributes(userId, keycloakAttributes);
 
 			if (request.communityRole() != null) {
@@ -261,5 +260,35 @@ public class KeycloakServiceImpl implements KeycloakService {
 		userResource.update(userRepresentation);
 
 		log.info("User attributes updated successfully for user: {}", userId);
+	}
+
+	@Override
+	public List<String> getRealmRoles(String keycloakUserId) {
+		Keycloak keycloak = getKeycloakClient();
+		RealmResource realmResource = keycloak.realm(keycloakProperties.getRealm());
+		UserResource userResource = realmResource.users().get(keycloakUserId);
+
+		return userResource.roles()
+			.realmLevel()
+			.listAll()
+			.stream()
+			.map(RoleRepresentation::getName)
+			.toList();
+	}
+
+	@Override
+	public Map<String, List<String>> getUserAttributes(String keycloakUserId) {
+		Keycloak keycloak = getKeycloakClient();
+		RealmResource realmResource = keycloak.realm(keycloakProperties.getRealm());
+		UserRepresentation userRepresentation = realmResource.users()
+			.get(keycloakUserId)
+			.toRepresentation();
+
+		if (userRepresentation == null) {
+			throw new RuntimeException("User not found with ID: " + keycloakUserId);
+		}
+
+		Map<String, List<String>> attributes = userRepresentation.getAttributes();
+		return attributes != null ? attributes : Map.of();
 	}
 }
