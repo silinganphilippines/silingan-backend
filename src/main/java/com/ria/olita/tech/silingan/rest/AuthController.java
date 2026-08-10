@@ -2,6 +2,7 @@ package com.ria.olita.tech.silingan.rest;
 
 import com.ria.olita.tech.silingan.dto.req.CreateUserRequest;
 import com.ria.olita.tech.silingan.dto.req.OtpVerifyRequest;
+import com.ria.olita.tech.silingan.dto.res.CreatedUserResponse;
 import com.ria.olita.tech.silingan.dto.res.LoginResponse;
 import com.ria.olita.tech.silingan.service.UserService;
 import com.ria.olita.tech.silingan.service.auth.AuthenticationService;
@@ -62,7 +63,7 @@ public class AuthController {
 						        	"enabled": true,
 						        	"emailVerified": true,
 						        	"communityRole": "RESIDENT",
-						        	"communityId": "550e8400-e29b-41d4-a716-446655440000",
+						        	"communityCode": "UDBH-123",
 						        	"address": {
 						        		"street": "123 Main St",
 						        		"barangay": "Poblacion",
@@ -116,14 +117,15 @@ public class AuthController {
 		log.info("Self-service registration request received for username: {}", request.username());
 
 		try {
-			userService.createSelfServiceUser(request);
+			CreatedUserResponse createdUser = userService.createSelfServiceUser(request);
 
 			Map<String, Object> payload = new HashMap<>();
 			payload.put("success", true);
 			payload.put("message", "User registered successfully");
-			payload.put("username", request.username());
+			payload.put("username", createdUser.username());
+			payload.put("user", createdUser);
 
-			LoginResponse response = authenticationService.issueTokenForMobile(request.mobileNumber(),request.communityId());
+			LoginResponse response = authenticationService.issueTokenForMobile(createdUser.mobileNumber(), createdUser.communityId());
 			payload.put("login", response);
 			payload.put("accessToken", response.accessToken());
 			payload.put("tokenType", response.tokenType());

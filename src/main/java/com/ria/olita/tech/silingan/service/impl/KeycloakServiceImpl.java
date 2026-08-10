@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -51,7 +52,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 	private KeycloakProperties keycloakProperties;
 
 	@Override
-	public String createUser(CreateUserRequest request) {
+	public String createUser(CreateUserRequest request, UUID communityId) {
 		log.info("Creating user in Keycloak: {}", request.username());
 		log.debug("CreateUserRequest details - enabled: {}, emailVerified: {}, communityRole: {}", 
 			request.enabled(), request.emailVerified(), request.communityRole());
@@ -87,13 +88,13 @@ public class KeycloakServiceImpl implements KeycloakService {
 			log.info("User created successfully with ID: {}", userId);
 
 			Map<String, List<String>> keycloakAttributes = new HashMap<>();
-			keycloakAttributes.put("communityId", List.of(request.communityId().toString()));
+			keycloakAttributes.put("communityId", List.of(communityId.toString()));
 			keycloakAttributes.put("mobileNumber", List.of(request.mobileNumber()));
 			keycloakAttributes.put("mobile_number_verified", List.of("true"));
 			updateUserAttributes(userId, keycloakAttributes);
 
 			if (request.communityRole() != null) {
-				if (request.communityRole().equals(SilinganRealmRole.COMMUNITY_ADMIN) && userCommunityRepository.hasRoleInCommunity(request.communityId(), request.communityRole())) {
+				if (request.communityRole().equals(SilinganRealmRole.COMMUNITY_ADMIN) && userCommunityRepository.hasRoleInCommunity(communityId, request.communityRole())) {
 					throw new ConflictException("Community already has a COMMUNITY_ADMIN assigned");
 				}
 				assignRealmRole(realmResource, userId, request.communityRole().name());

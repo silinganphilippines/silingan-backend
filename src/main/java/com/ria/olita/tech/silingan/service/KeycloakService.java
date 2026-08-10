@@ -4,10 +4,11 @@ import com.ria.olita.tech.silingan.dto.req.CreateUserRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface KeycloakService {
 
-	String createUser(CreateUserRequest request);
+	String createUser(CreateUserRequest request, UUID communityId);
 
 	void updateUserAttributes(String keycloakUserId, Map<String, List<String>> attributes);
 
