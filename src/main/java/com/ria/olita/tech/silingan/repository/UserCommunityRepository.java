@@ -1,6 +1,7 @@
 package com.ria.olita.tech.silingan.repository;
 
 import java.util.UUID;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,4 +17,6 @@ public interface UserCommunityRepository extends JpaRepository<UserCommunity, UU
 			"FROM UserCommunity uc " +
 			"WHERE uc.community.id = :communityId AND uc.role = :role")
 	boolean hasRoleInCommunity(UUID communityId, SilinganRealmRole role);
+
+	Optional<UserCommunity> findByUserIdAndCommunityId(UUID userId, UUID communityId);
 }

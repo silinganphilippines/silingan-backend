@@ -17,7 +17,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.5.6
     container_name: keycloak
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
@@ -26,7 +26,9 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
     volumes:
+      - ./keycloak/themes:/opt/keycloak/themes
       - ./keycloak/providers:/opt/keycloak/providers
+      - ./keycloak/import:/opt/keycloak/data/import
     ports:
       - "8080:8080"
     depends_on:

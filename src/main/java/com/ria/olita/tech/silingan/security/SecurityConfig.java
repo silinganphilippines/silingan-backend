@@ -9,11 +9,15 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.ArrayList;
@@ -22,6 +26,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.ria.olita.tech.silingan.config.KeycloakProperties;
+import com.ria.olita.tech.silingan.security.context.OtpVerificationFilter;
 import com.ria.olita.tech.silingan.security.context.UserContextFilter;
 
 import lombok.RequiredArgsConstructor;
@@ -44,6 +49,10 @@ public class SecurityConfig {
 
 			List<GrantedAuthority> authorities = new ArrayList<>();
 
+			extractBackendRoles(jwt, log).forEach(role ->
+				authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+			);
+
 			extractRealmRoles(jwt, log).forEach(role ->
 				authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
 			);
@@ -60,9 +69,18 @@ public class SecurityConfig {
 		return converter;
 	}
 
-/* =============================
-   Helper Methods
-   ============================= */
+	/* =============================
+	   Helper Methods
+	   ============================= */
+
+	private List<String> extractBackendRoles(Jwt jwt, Logger log) {
+		List<String> roles = jwt.getClaimAsStringList("roles");
+		if (roles == null) {
+			return List.of();
+		}
+		log.debug("Extracted backend roles from JWT: {}", roles);
+		return roles;
+	}
 
 	private void logJwtClaims(Jwt jwt, Logger log) {
 		log.debug("=== JWT Claims Debug ===");
@@ -163,33 +181,64 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http, UserContextFilter userContextFilter) throws Exception {
+	public SecurityFilterChain filterChain(HttpSecurity http,
+	                                       UserContextFilter userContextFilter,
+	                                       OtpVerificationFilter otpVerificationFilter,
+	                                       RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+	                                       RestAccessDeniedHandler restAccessDeniedHandler,
+	                                       JwtDecoder jwtDecoder) throws Exception {
 
 		http
 			.csrf(AbstractHttpConfigurer::disable)
+			// OAuth2 authorization-code login requires a server-side session for state handling.
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+			.exceptionHandling(ex -> ex
+				.defaultAuthenticationEntryPointFor(
+					restAuthenticationEntryPoint,
+					request -> request.getRequestURI().startsWith("/api/")
+				)
+				.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/oauth2/authorization/silingan"))
+				.accessDeniedHandler(restAccessDeniedHandler)
+			)
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/public/**", "/auth/register")
+				.requestMatchers("/login/**", "/oauth2/**")
+				.permitAll()
+				.requestMatchers("/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/login/otp")
+				.permitAll()
+				.requestMatchers(
+					"/api/v1/auth/otp/request",
+					"/api/v1/auth/otp/verify-registration"
+				)
 				.permitAll()
 				.requestMatchers(
 					"/v3/api-docs/**",
 					"/swagger-ui.html",
 					"/swagger-ui/**",
 					"/swagger-resources/**",
-					"/webjars/**"
+					"/webjars/**",
+					"/h2-console/**",
+					"/error"
 				)
 				.permitAll()
+				.requestMatchers("/api/v1/auth/register")
+				.authenticated()
+				.requestMatchers("/api/v1/auth/otp/**")
+				.authenticated()
 				.anyRequest()
 				.authenticated()
 			)
-			.oauth2Login(oauth2 -> oauth2
-				.loginPage("/oauth2/authorization/silingan")
-				.defaultSuccessUrl("/", true))
 			.oauth2ResourceServer(oauth2 ->
-				oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-			).headers(headers -> headers
+				oauth2.jwt(jwt -> jwt
+					.decoder(jwtDecoder)
+					.jwtAuthenticationConverter(jwtAuthenticationConverter())
+				)
+			)
+			.oauth2Login(Customizer.withDefaults())
+			.headers(headers -> headers
 				.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
 
 		http.addFilterAfter(userContextFilter, BearerTokenAuthenticationFilter.class);
+		http.addFilterAfter(otpVerificationFilter, UserContextFilter.class);
 
 		return http.build();
 	}

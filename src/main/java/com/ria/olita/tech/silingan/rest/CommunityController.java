@@ -2,26 +2,32 @@ package com.ria.olita.tech.silingan.rest;
 
 import com.ria.olita.tech.silingan.dto.req.CommunityStatusUpdateRequest;
 import com.ria.olita.tech.silingan.dto.req.CreateCommunityRequest;
+import com.ria.olita.tech.silingan.dto.req.AssignCommunityAdministratorRequest;
 import com.ria.olita.tech.silingan.dto.req.UpdateCommunityRequest;
 import com.ria.olita.tech.silingan.dto.res.ApiResponse;
+import com.ria.olita.tech.silingan.dto.res.AssignCommunityAdministratorResponse;
+import com.ria.olita.tech.silingan.dto.res.CommunityAdminInvitationStatusResponse;
 import com.ria.olita.tech.silingan.dto.res.CommunityResponse;
+import com.ria.olita.tech.silingan.entity.CommunityAdminInvitationStatus;
 import com.ria.olita.tech.silingan.entity.CommunityStatus;
 import com.ria.olita.tech.silingan.entity.CommunityType;
 import com.ria.olita.tech.silingan.service.CommunityService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.DefaultValue;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,11 +40,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/communities")
+@RequestMapping("/api/v1/admin/communities")
 @RequiredArgsConstructor
 @Tag(name = "Community", description = "Community management APIs")
 public class CommunityController {
@@ -210,6 +215,46 @@ public class CommunityController {
 		@Valid @RequestBody CommunityStatusUpdateRequest communityStatusUpdateRequest) {
 		communityService.updateStatus(communityId,communityStatusUpdateRequest.status());
 		return ResponseEntity.ok(ApiResponse.success("Community status updated successfully",null));
+	}
+
+	@PostMapping("/{communityId}/administrator")
+	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
+	@Operation(
+		summary = "Assign a community administrator",
+		requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+			required = true,
+			content = @Content(
+				schema = @Schema(implementation = AssignCommunityAdministratorRequest.class),
+				examples = {
+					@ExampleObject(
+						name = "assignCommunityAdministratorExample",
+						summary = "Example administrator assignment request",
+						value = """
+							{
+								"email": "john.doe@company.com"
+							}
+							"""
+					)
+				}
+			)
+		)
+	)
+	public ResponseEntity<ApiResponse<AssignCommunityAdministratorResponse>> assignAdministrator(
+		@Parameter(description = "Community ID", example = "550e8400-e29b-41d4-a716-446655440000") @PathVariable UUID communityId,
+		@Valid @RequestBody AssignCommunityAdministratorRequest request) {
+		AssignCommunityAdministratorResponse response = communityService.assignAdministrator(communityId, request.email());
+		return ResponseEntity.ok(ApiResponse.success("Administrator assignment initiated successfully", response));
+	}
+
+	@GetMapping("/administrator/invitations")
+	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
+	@Operation(summary = "List administrator invitations with optional community/status filters")
+	public ResponseEntity<ApiResponse<Page<CommunityAdminInvitationStatusResponse>>> getAdministratorInvitations(
+		@Parameter(description = "Optional community ID filter", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam(required = false)  UUID communityId,
+		@Parameter(description = "Optional invitation status filter", example = "PENDING") @RequestParam(required = false) @DefaultValue("PENDING") CommunityAdminInvitationStatus status,
+		Pageable pageable) {
+		Page<CommunityAdminInvitationStatusResponse> response = communityService.getAdministratorInvitations(communityId, status, pageable);
+		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 
 	@GetMapping("/validate")

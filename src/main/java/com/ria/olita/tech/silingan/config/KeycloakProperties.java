@@ -17,4 +17,9 @@ public class KeycloakProperties {
 	private String realm;
 	private String clientId;
 	private String clientSecret;
+	private String tokenClientId;
+	private String tokenClientSecret;
+	private String invitationRedirectClientId;
+	private String invitationRedirectUri;
+	private Integer invitationLifespanSeconds;
 }

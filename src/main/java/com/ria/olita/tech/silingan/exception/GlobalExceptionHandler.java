@@ -112,7 +112,10 @@ public class GlobalExceptionHandler {
 			case "CONFLICT" -> HttpStatus.CONFLICT;
 			case "VALIDATION_ERROR" -> HttpStatus.BAD_REQUEST;
 			case "UNAUTHORIZED" -> HttpStatus.UNAUTHORIZED;
-			case "FORBIDDEN" -> HttpStatus.FORBIDDEN;
+			case "FORBIDDEN", "OTP_REQUIRED" -> HttpStatus.FORBIDDEN;
+			case "INVALID_OTP", "INVALID_PHONE_NUMBER" -> HttpStatus.BAD_REQUEST;
+			case "OTP_EXPIRED", "EXPIRED_OTP" -> HttpStatus.GONE;
+			case "OTP_ATTEMPTS_EXCEEDED", "TOO_MANY_ATTEMPTS", "OTP_COOLDOWN" -> HttpStatus.TOO_MANY_REQUESTS;
 			default -> HttpStatus.INTERNAL_SERVER_ERROR;
 		};
 	}

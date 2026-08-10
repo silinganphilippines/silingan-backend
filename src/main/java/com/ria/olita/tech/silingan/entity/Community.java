@@ -5,9 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.ria.olita.tech.silingan.entity.base.BaseEntity;
@@ -29,7 +26,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -39,7 +35,6 @@ import lombok.Setter;
 	name = "communities",
 	indexes = {
 		@Index(name = "idx_community_code", columnList = "community_code"),
-		@Index(name = "idx_system_gen_code", columnList = "system_gen_code"),
 		@Index(name = "idx_tenant_community", columnList = "tenant_id, community_code")
 	},
 	uniqueConstraints = {
@@ -53,15 +48,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @SQLRestriction("deleted = false")
-
-@FilterDef(
-	name = "tenantFilter",
-	parameters = @ParamDef(name = "tenantId", type = UUID.class)
-)
-@Filter(
-	name = "tenantFilter",
-	condition = "tenant_id = :tenantId"
-)
 @Setter
 @Getter
 public class Community extends BaseEntity {

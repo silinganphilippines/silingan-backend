@@ -13,6 +13,9 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
 	Optional<User> findByKeycloakUserId(String keycloakUserId);
 
+	Optional<User> findByMobileNumber(String mobileNumber);
+
+
 
 	@Query("""
 	           SELECT u.id

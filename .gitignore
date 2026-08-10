@@ -1,5 +1,7 @@
 build
 logs
+/logs/
+/docs/
 .classpath
 bin
 .pmd

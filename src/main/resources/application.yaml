@@ -33,7 +33,7 @@ spring:
         registration:
           silingan:
             client-id: silingan-api
-            client-secret: QJWjt2OugT9UK2hSjrDZQGRhv5IUQgH6
+            client-secret: N8fhpvahIwkPdmMFLrHTdsZi89CnBOap
             scope: openid,profile,email
             authorization-grant-type: authorization_code
             redirect-uri: http://localhost:8082/login/oauth2/code/silingan
@@ -58,7 +58,12 @@ keycloak:
   url: http://localhost:8080
   realm: silingan-platform
   client-id: silingan-backend
-  client-secret: kxY6kRsvCejFAB4jwytOUH7mhkpbhyYN
+  client-secret: YVvWkbSHaxBM5o3l3Mqwr2jFYtBRmHK0
+  token-client-id: silingan-api
+  token-client-secret: N8fhpvahIwkPdmMFLrHTdsZi89CnBOap
+  invitation-redirect-client-id: silingan-api
+  invitation-redirect-uri: http://localhost:8082/
+  invitation-lifespan-seconds: 86400
 
 # ============================================
 # Server Configuration
@@ -75,6 +80,30 @@ logging:
     root: INFO
     com.ria.olita.tech.silingan.security: DEBUG
     org.springframework.security: DEBUG
+    OTP_AUDIT: INFO
+
+
+otp:
+  length: 6
+  expiration-minutes: 5
+  max-attempts: 3
+  cooldown-seconds: 60
+  registration-proof-minutes: 10
+  cache:
+    max-size: 10000
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-change-me-please-at-least-32-bytes}
+  issuer: ${JWT_ISSUER:silingan-backend}
+  access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:3600}
+
+sms:
+  provider: semaphore
+  # Temporary toggle to keep OTP happy-path while SMS provider/sender-name setup is pending.
+  bypass-sending: ${SMS_BYPASS_SENDING:true}
+  semaphore:
+    api-key: ${SEMAPHORE_API_KEY:59ba20c393afda146b89fa87c9c70ff6}
+    sender-name: ${SEMAPHORE_SENDER_NAME:SILINGAN}
 
 
 

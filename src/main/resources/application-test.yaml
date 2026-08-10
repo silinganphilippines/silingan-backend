@@ -64,6 +64,11 @@ keycloak:
   realm: ${KEYCLOAK_REALM}
   client-id: ${KEYCLOAK_CLIENT_ID}
   client-secret: ${KEYCLOAK_CLIENT_SECRET}
+  token-client-id: ${KEYCLOAK_TOKEN_CLIENT_ID}
+  token-client-secret: ${KEYCLOAK_TOKEN_CLIENT_SECRET}
+  invitation-redirect-client-id: ${KEYCLOAK_INVITATION_REDIRECT_CLIENT_ID:silingan-api}
+  invitation-redirect-uri: ${KEYCLOAK_INVITATION_REDIRECT_URI:http://localhost:8082/}
+  invitation-lifespan-seconds: ${KEYCLOAK_INVITATION_LIFESPAN_SECONDS:86400}
 
 # ============================================
 # Server Configuration
@@ -83,5 +88,27 @@ logging:
     com.ria.olita.tech.silingan: DEBUG
     com.ria.olita.tech.silingan.security: DEBUG
     org.springframework.security: ${SECURITY_LOG_LEVEL:DEBUG}
+
+sms:
+  provider: semaphore
+  # Keep OTP request/verify happy-path in test profile while provider setup is pending.
+  bypass-sending: ${SMS_BYPASS_SENDING:true}
+  semaphore:
+    api-key: ${SEMAPHORE_API_KEY:your-api-key}
+    sender-name: ${SEMAPHORE_SENDER_NAME:SILINGAN}
+
+otp:
+  length: ${OTP_LENGTH:6}
+  expiration-minutes: ${OTP_EXPIRATION_MINUTES:5}
+  max-attempts: ${OTP_MAX_ATTEMPTS:3}
+  cooldown-seconds: ${OTP_COOLDOWN_SECONDS:60}
+  registration-proof-minutes: ${OTP_REGISTRATION_PROOF_MINUTES:10}
+  cache:
+    max-size: ${OTP_CACHE_MAX_SIZE:10000}
+
+jwt:
+  secret: ${JWT_SECRET:test-only-secret-change-me-please-32-bytes-minimum}
+  issuer: ${JWT_ISSUER:silingan-backend-test}
+  access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:3600}
 
 
