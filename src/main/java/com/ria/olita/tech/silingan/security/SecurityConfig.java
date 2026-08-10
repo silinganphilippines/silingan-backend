@@ -10,12 +10,14 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.ArrayList;
@@ -188,12 +190,19 @@ public class SecurityConfig {
 
 		http
 			.csrf(AbstractHttpConfigurer::disable)
-			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			// OAuth2 authorization-code login requires a server-side session for state handling.
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 			.exceptionHandling(ex -> ex
-				.authenticationEntryPoint(restAuthenticationEntryPoint)
+				.defaultAuthenticationEntryPointFor(
+					restAuthenticationEntryPoint,
+					request -> request.getRequestURI().startsWith("/api/")
+				)
+				.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/oauth2/authorization/silingan"))
 				.accessDeniedHandler(restAccessDeniedHandler)
 			)
 			.authorizeHttpRequests(auth -> auth
+				.requestMatchers("/login/**", "/oauth2/**")
+				.permitAll()
 				.requestMatchers("/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/login/otp")
 				.permitAll()
 				.requestMatchers(
@@ -224,6 +233,7 @@ public class SecurityConfig {
 					.jwtAuthenticationConverter(jwtAuthenticationConverter())
 				)
 			)
+			.oauth2Login(Customizer.withDefaults())
 			.headers(headers -> headers
 				.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
 

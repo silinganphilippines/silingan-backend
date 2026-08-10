@@ -66,6 +66,9 @@ keycloak:
   client-secret: ${KEYCLOAK_CLIENT_SECRET}
   token-client-id: ${KEYCLOAK_TOKEN_CLIENT_ID}
   token-client-secret: ${KEYCLOAK_TOKEN_CLIENT_SECRET}
+  invitation-redirect-client-id: ${KEYCLOAK_INVITATION_REDIRECT_CLIENT_ID:silingan-api}
+  invitation-redirect-uri: ${KEYCLOAK_INVITATION_REDIRECT_URI:http://localhost:8082/}
+  invitation-lifespan-seconds: ${KEYCLOAK_INVITATION_LIFESPAN_SECONDS:86400}
 
 # ============================================
 # Server Configuration

@@ -58,9 +58,12 @@ keycloak:
   url: http://localhost:8080
   realm: silingan-platform
   client-id: silingan-backend
-  client-secret: kxY6kRsvCejFAB4jwytOUH7mhkpbhyYN
+  client-secret: YVvWkbSHaxBM5o3l3Mqwr2jFYtBRmHK0
   token-client-id: silingan-api
   token-client-secret: N8fhpvahIwkPdmMFLrHTdsZi89CnBOap
+  invitation-redirect-client-id: silingan-api
+  invitation-redirect-uri: http://localhost:8082/
+  invitation-lifespan-seconds: 86400
 
 # ============================================
 # Server Configuration

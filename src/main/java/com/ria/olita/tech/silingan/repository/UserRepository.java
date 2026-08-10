@@ -16,6 +16,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 	Optional<User> findByMobileNumber(String mobileNumber);
 
 
+
 	@Query("""
 	           SELECT u.id
 	           FROM User u
