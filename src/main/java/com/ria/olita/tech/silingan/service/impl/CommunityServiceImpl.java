@@ -32,6 +32,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,6 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import ch.qos.logback.core.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -178,10 +178,29 @@ public class CommunityServiceImpl implements CommunityService {
 		if (community.getStatus() == CommunityStatus.ARCHIVE) {
 			throw new ConflictException("Cannot change status of archived community");
 		}
+
+		if (status == CommunityStatus.ACTIVE && community.getStatus() != CommunityStatus.ACTIVE) {
+			validateCommunityReadinessForActivation(community);
+		}
+
 		if (status != null && community.getStatus() != status) {
 			community.setStatus(status);
 		}
 		communityRepository.save(community);
+	}
+
+	private void validateCommunityReadinessForActivation(Community community) {
+		if (!StringUtils.hasText(community.getName())) {
+			throw new ValidationException("Cannot activate community: community name is required");
+		}
+
+		if (!StringUtils.hasText(community.getCommunityCode())) {
+			throw new ValidationException("Cannot activate community: community code is required");
+		}
+
+		if (!userCommunityRepository.hasRoleInCommunity(community.getId(), SilinganRealmRole.COMMUNITY_ADMIN)) {
+			throw new ValidationException("Cannot activate community: community administrator is required");
+		}
 	}
 
 	@Override
