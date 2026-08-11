@@ -282,4 +282,20 @@ public class CommunityController {
 		communityService.switchCommunity(communityId);
 		return ResponseEntity.ok(ApiResponse.success("Community switched successfully", communityId));
 	}
+
+	@GetMapping("/search")
+	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
+	@Operation(
+		summary = "Search communities by name or code",
+		description = "Search for communities using community name or community code. The search is case-insensitive and supports partial matching."
+	)
+	public ResponseEntity<ApiResponse<List<CommunityResponse>>> searchCommunities(
+		@Parameter(
+			description = "Search term to match against community name or code",
+			example = "Greenbelt",
+			required = true
+		) @RequestParam String searchTerm) {
+		List<CommunityResponse> responses = communityService.searchByCommunityNameOrCode(searchTerm);
+		return ResponseEntity.ok(ApiResponse.success(responses));
+	}
 }

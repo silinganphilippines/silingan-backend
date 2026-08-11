@@ -26,4 +26,7 @@ public interface CommunityRepository extends JpaRepository<Community, UUID> {
 	List<Community> findByType(CommunityType type);
 
 	List<Community> findByStatusAndType(CommunityStatus status, CommunityType type);
+
+	@Query("SELECT c FROM Community c WHERE LOWER(c.name) LIKE LOWER(CONCAT('%', ?1, '%')) OR LOWER(c.communityCode) LIKE LOWER(CONCAT('%', ?2, '%'))")
+	List<Community> searchByCommunityNameOrCode(String name, String code);
 }
