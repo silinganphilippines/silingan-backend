@@ -298,4 +298,18 @@ public class CommunityServiceImpl implements CommunityService {
 				invitation.getAcceptedAt()
 			));
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<CommunityResponse> searchByCommunityNameOrCode(String searchTerm) {
+		if (!StringUtils.hasText(searchTerm)) {
+			throw new ValidationException("Search term cannot be empty");
+		}
+
+		String trimmedSearchTerm = searchTerm.trim();
+		return communityRepository.searchByCommunityNameOrCode(trimmedSearchTerm, trimmedSearchTerm)
+			.stream()
+			.map(communityMapper::toResponse)
+			.collect(Collectors.toList());
+	}
 }

@@ -47,4 +47,6 @@ public interface CommunityService {
 		CommunityAdminInvitationStatus status,
 		Pageable pageable
 	);
+
+	List<CommunityResponse> searchByCommunityNameOrCode(String searchTerm);
 }
