@@ -165,7 +165,7 @@ Set the JWT secret as an environment variable:
 # Development (local)
 export JWT_SECRET="your-generated-secret-key-here"
 
-# Or in application.yaml (dev only, never commit secrets!)
+# Or in application-dev.yaml (dev only, never commit secrets!)
 jwt:
   secret: your-generated-secret-key-here
   issuer: silingan-backend
