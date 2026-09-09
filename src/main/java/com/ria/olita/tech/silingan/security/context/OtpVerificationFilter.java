@@ -49,7 +49,6 @@ public class OtpVerificationFilter extends OncePerRequestFilter {
 			"/swagger-ui.html",
 			"/swagger-resources/**",
 			"/webjars/**",
-			"/h2-console/**",
 			"/error"
 		);
 	}

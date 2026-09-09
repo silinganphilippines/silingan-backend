@@ -14,12 +14,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ria.olita.tech.silingan.dto.req.AssignPermissionsRequest;
 import com.ria.olita.tech.silingan.dto.res.AvailablePermissionsResponse;
+import com.ria.olita.tech.silingan.dto.res.CommunityStaffMemberResponse;
+import com.ria.olita.tech.silingan.dto.res.CommunityStaffStatus;
 import com.ria.olita.tech.silingan.dto.res.StaffPermissionResponse;
 import com.ria.olita.tech.silingan.entity.rbac.PermissionEnum;
+import com.ria.olita.tech.silingan.entity.rbac.StaffRoleCode;
 import com.ria.olita.tech.silingan.service.StaffPermissionService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -91,6 +95,24 @@ public class StaffPermissionController {
 			@Parameter(description = "Community ID", example = "550e8400-e29b-41d4-a716-446655440000")
 			@PathVariable UUID communityId) {
 		return ResponseEntity.ok(staffPermissionService.getAllStaffWithPermissions(communityId));
+	}
+
+	@GetMapping("/directory")
+	@Operation(
+		summary = "Get community staff directory",
+		description = "Returns a centralized staff directory for the community with optional search, role filter, and status filter."
+	)
+	@ApiResponse(responseCode = "200", description = "Staff directory returned")
+	public ResponseEntity<List<CommunityStaffMemberResponse>> getCommunityStaffDirectory(
+			@Parameter(description = "Community ID", example = "550e8400-e29b-41d4-a716-446655440000")
+			@PathVariable UUID communityId,
+			@Parameter(description = "Search by full name, email, or mobile number", example = "juan")
+			@RequestParam(required = false) String searchTerm,
+			@Parameter(description = "Optional role filter", example = "PMO_STAFF")
+			@RequestParam(required = false) StaffRoleCode role,
+			@Parameter(description = "Optional status filter", example = "ACTIVE")
+			@RequestParam(required = false) CommunityStaffStatus status) {
+		return ResponseEntity.ok(staffPermissionService.getCommunityStaffDirectory(communityId, searchTerm, role, status));
 	}
 
 	@GetMapping("/users/{userId}")
@@ -197,4 +219,3 @@ public class StaffPermissionController {
 		return ResponseEntity.noContent().build();
 	}
 }
-

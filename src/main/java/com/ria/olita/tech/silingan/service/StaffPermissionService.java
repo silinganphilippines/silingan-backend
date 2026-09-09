@@ -6,8 +6,11 @@ import java.util.UUID;
 
 import com.ria.olita.tech.silingan.dto.req.AssignPermissionsRequest;
 import com.ria.olita.tech.silingan.dto.res.AvailablePermissionsResponse;
+import com.ria.olita.tech.silingan.dto.res.CommunityStaffMemberResponse;
+import com.ria.olita.tech.silingan.dto.res.CommunityStaffStatus;
 import com.ria.olita.tech.silingan.dto.res.StaffPermissionResponse;
 import com.ria.olita.tech.silingan.entity.rbac.PermissionEnum;
+import com.ria.olita.tech.silingan.entity.rbac.StaffRoleCode;
 
 public interface StaffPermissionService {
 
@@ -22,6 +25,13 @@ public interface StaffPermissionService {
 	StaffPermissionResponse getStaffPermissions(UUID communityId, UUID userId);
 
 	List<StaffPermissionResponse> getAllStaffWithPermissions(UUID communityId);
+
+	List<CommunityStaffMemberResponse> getCommunityStaffDirectory(
+		UUID communityId,
+		String searchTerm,
+		StaffRoleCode role,
+		CommunityStaffStatus status
+	);
 
 	AvailablePermissionsResponse getAvailablePermissions();
 }

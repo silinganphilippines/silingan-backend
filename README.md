@@ -436,6 +436,85 @@ The `data.sql` file seeds the database with:
 
 Users in the seed data are pre-assigned to communities. When these users log in via OTP, their JWT will contain the `communityId` set in Keycloak.
 
+## Community Staff RBAC
+
+The backend now supports full **community-scoped RBAC** for staff accounts:
+
+- Roles are stored in the database (`staff_roles`)
+- Role permission templates are stored in the database (`staff_role_permissions`)
+- Staff role assignments are stored per user per community (`user_community_staff_roles`)
+- Per-community role customization is supported through override rules (`community_role_permission_overrides`)
+
+### System Roles
+
+- `COMMUNITY_ADMIN`
+- `PMO_STAFF`
+- `SECURITY_ADMIN`
+- `MAINTENANCE_ADMIN`
+- `READ_ONLY_STAFF`
+
+### Effective Permission Resolution
+
+For each `(userId, communityId)` the system computes:
+
+1. Default role permissions from `staff_role_permissions`
+2. Community-specific overrides from `community_role_permission_overrides` (`ALLOW`/`DENY`)
+3. Direct user permissions from `user_community_permissions`
+
+`effectivePermissions = rolePermissionsWithOverrides + directUserPermissions`
+
+These effective permissions are loaded into `UserContext` and used by `@RequiresPermission`.
+
+### RBAC APIs
+
+#### Permission & Role Catalog
+
+- `GET /api/v1/rbac/permissions`
+- `GET /api/v1/rbac/staff-roles`
+
+#### Community Role Templates
+
+- `GET /api/v1/communities/{communityId}/rbac/roles`
+- `PUT /api/v1/communities/{communityId}/rbac/roles/{roleCode}/permissions`
+
+Example request:
+
+```json
+{
+  "permissions": ["ANNOUNCEMENT_VIEW", "ANNOUNCEMENT_MANAGE", "REPORT_VIEW"]
+}
+```
+
+#### Staff Role Assignment
+
+- `PUT /api/v1/communities/{communityId}/staff/{userId}/role`
+- `GET /api/v1/communities/{communityId}/staff/{userId}/role`
+- `GET /api/v1/communities/{communityId}/staff/{userId}/effective-permissions`
+
+Example request:
+
+```json
+{
+  "roleCode": "PMO_STAFF",
+  "active": true
+}
+```
+
+#### Current User Capabilities
+
+- `GET /api/v1/me/communities/{communityId}/capabilities`
+
+Example response:
+
+```json
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440001",
+  "communityId": "550e8400-e29b-41d4-a716-446655440000",
+  "roleCode": "PMO_STAFF",
+  "permissions": ["DASHBOARD_VIEW", "ANNOUNCEMENT_VIEW", "REPORT_VIEW"]
+}
+```
+
 ## Environment Variables Reference
 
 Configure these environment variables for different deployment environments:
@@ -501,4 +580,3 @@ For detailed information about authentication flows and JWT setup, see:
   - Data flow diagrams and code examples
   - Design decisions and rationale
   - Troubleshooting and future enhancements
-

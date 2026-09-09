@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+}
+
+@layer base {
+  :root {
+    --background: 248 250 252;
+    --foreground: 15 23 42;
+  }
+  
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+  }
+  
+  .table-row-hover {
+    @apply transition-colors duration-150 hover:bg-blue-50/50 cursor-pointer;
+  }
+  
+  .gradient-border {
+    @apply relative before:absolute before:inset-0 before:rounded-xl before:p-[1px] before:bg-gradient-to-r before:from-blue-500 before:to-purple-500 before:-z-10;
+  }
+  
+  /* Gradient backgrounds for stat cards */
+  .stat-card-gradient {
+    @apply bg-gradient-to-br from-blue-500 to-blue-600;
+  }
+  
+  .success-gradient {
+    @apply bg-gradient-to-br from-green-500 to-emerald-600;
+  }
+  
+  .warning-gradient {
+    @apply bg-gradient-to-br from-amber-500 to-orange-600;
+  }
+  
+  .danger-gradient {
+    @apply bg-gradient-to-br from-red-500 to-rose-600;
+  }
+  
+  .purple-gradient {
+    @apply bg-gradient-to-br from-purple-500 to-purple-600;
+  }
+  
+  /* Table enhancements */
+  .table-container {
+    @apply bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm;
+  }
+  
+  .table-header {
+    @apply bg-slate-50 border-b border-slate-200;
+  }
+  
+  .table-row-zebra:nth-child(even) {
+    @apply bg-slate-50/50;
+  }
+  
+  /* Pulse animation for notifications */
+  @keyframes pulse-ring {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+  }
+  
+  .pulse-ring {
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Smooth transitions */
+  .smooth-transition {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  
+  /* Badge dot indicator */
+  .badge-dot {
+    @apply w-1.5 h-1.5 rounded-full mr-1.5;
+  }
+}

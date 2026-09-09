@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,8 +35,8 @@ import java.util.stream.Collectors;
 import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
 import com.ria.olita.tech.silingan.entity.rbac.CommunityAccess;
 import com.ria.olita.tech.silingan.entity.rbac.PermissionEnum;
-import com.ria.olita.tech.silingan.repository.UserCommunityPermissionRepository;
 import com.ria.olita.tech.silingan.repository.UserRepository;
+import com.ria.olita.tech.silingan.service.CommunityRbacService;
 import com.ria.olita.tech.silingan.service.CommunityAdminInvitationActivationService;
 
 @Component
@@ -45,7 +46,7 @@ public class UserContextFilter extends OncePerRequestFilter {
 	private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
 
 	private final UserRepository userRepository;
-	private final UserCommunityPermissionRepository permissionRepository;
+	private final CommunityRbacService communityRbacService;
 	private final CommunityAdminInvitationActivationService invitationActivationService;
 	private final EntityManager entityManager;
 
@@ -155,7 +156,7 @@ public class UserContextFilter extends OncePerRequestFilter {
 		}
 		UUID userUuid = UUID.fromString(userId);
 		UUID communityUuid = UUID.fromString(communityId);
-		List<PermissionEnum> permissions = permissionRepository.findPermissionsByUserIdAndCommunityId(userUuid, communityUuid);
+		Set<PermissionEnum> permissions = communityRbacService.resolveEffectivePermissions(userUuid, communityUuid);
 		return new CommunityAccess(communityUuid, permissions);
 	}
 
