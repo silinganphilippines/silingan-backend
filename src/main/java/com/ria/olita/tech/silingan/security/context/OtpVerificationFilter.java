@@ -40,6 +40,7 @@ public class OtpVerificationFilter extends OncePerRequestFilter {
 		this.objectMapper = objectMapper;
 		this.excludedPatterns = List.of(
 			"/api/v1/admin/communities/**",
+			"/api/v1/public/**",
 			"/api/v1/tenants/**",
 			"/api/v1/auth/login/otp",
 			"/api/v1/auth/otp/**",
