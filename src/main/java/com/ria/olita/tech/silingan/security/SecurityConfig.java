@@ -203,7 +203,7 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/login/**", "/oauth2/**")
 				.permitAll()
-				.requestMatchers("/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/login/otp")
+				.requestMatchers("/api/v1/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/login/otp")
 				.permitAll()
 				.requestMatchers(
 					"/api/v1/auth/otp/request",
