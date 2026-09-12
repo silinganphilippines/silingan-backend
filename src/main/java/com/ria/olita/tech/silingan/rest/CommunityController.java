@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.DefaultValue;
 import lombok.RequiredArgsConstructor;
@@ -101,7 +100,7 @@ public class CommunityController {
 		return ResponseEntity.ok(ApiResponse.success(response));
 	}
 
-	@PermitAll
+	@PreAuthorize("hasRole('PLATFORM_ADMIN')")
 	@GetMapping("/code/{code}")
 	@Operation(summary = "Get community by code")
 	public ResponseEntity<ApiResponse<CommunityResponse>> getByCode(
@@ -255,23 +254,6 @@ public class CommunityController {
 		Pageable pageable) {
 		Page<CommunityAdminInvitationStatusResponse> response = communityService.getAdministratorInvitations(communityId, status, pageable);
 		return ResponseEntity.ok(ApiResponse.success(response));
-	}
-
-	@GetMapping("/validate")
-	@Operation(summary = "Validate a community ID")
-	public ResponseEntity<ApiResponse<Boolean>> validate(
-		@Parameter(description = "Community ID to validate", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam String communityId) {
-		boolean isValid = communityService.validate(communityId);
-		return ResponseEntity.ok(ApiResponse.success(isValid));
-	}
-
-	@GetMapping("/my-communities")
-	@PreAuthorize("hasRole('RESIDENT')")
-	@Operation(summary = "Get communities for a user")
-	public ResponseEntity<ApiResponse<List<CommunityResponse>>> getMyCommunities(
-		@Parameter(description = "User ID", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam UUID userId) {
-		List<CommunityResponse> responses = communityService.getByUserId(userId);
-		return ResponseEntity.ok(ApiResponse.success(responses));
 	}
 
 	@PutMapping("/switch/{communityId}")
