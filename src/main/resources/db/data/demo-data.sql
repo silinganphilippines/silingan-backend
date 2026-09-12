@@ -6,7 +6,7 @@
 --
 -- This file is only listed in spring.sql.init.data-locations under the
 -- `local` profile document in application.yaml. The dev and prod profiles
--- load reference-data.sql alone, so these fake tenants and the synthetic
+-- load no seed data at all, so these fake tenants and the synthetic
 -- `kc-*` Keycloak user IDs cannot reach a shared environment.
 --
 -- Every statement ends in ON CONFLICT DO NOTHING because sql.init runs on
@@ -66,4 +66,7 @@ INSERT INTO issues (
     ('60000000-0000-0000-0000-000000000001', 'Pothole near covered court', 'Large pothole causing traffic and safety concerns near the covered court entrance.', 'OPEN', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000001', NULL, NULL, 'Covered Court Entrance, Barangay San Isidro', 14.6764, 121.0442, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
     ('60000000-0000-0000-0000-000000000002', 'Elevator not stopping on 10th floor', 'Residents reported that Elevator 2 skips the 10th floor during peak hours.', 'IN_PROGRESS', '20000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000003', NULL, NULL, 'Tower A Elevator 2', 14.6093, 121.0221, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE)
 ON CONFLICT DO NOTHING;
+
+
+
 

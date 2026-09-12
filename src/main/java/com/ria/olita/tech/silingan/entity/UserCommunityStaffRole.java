@@ -5,8 +5,12 @@ import java.util.UUID;
 
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.ria.olita.tech.silingan.entity.rbac.StaffRoleCode;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -21,12 +25,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Binds a user to exactly one predefined staff role within one community.
+ *
+ * <p>The role is stored as a code rather than a foreign key because the role catalogue is defined
+ * in code ({@code StaffRoleCatalog}) and is not editable at runtime.
+ */
 @Entity
 @Table(
 	name = "user_community_staff_roles",
 	indexes = {
 		@Index(name = "idx_ucsr_user_community", columnList = "user_id, community_id"),
-		@Index(name = "idx_ucsr_community_role", columnList = "community_id, staff_role_id")
+		@Index(name = "idx_ucsr_community_role", columnList = "community_id, role_code")
 	},
 	uniqueConstraints = {
 		@UniqueConstraint(columnNames = {"user_id", "community_id"})
@@ -57,12 +67,9 @@ public class UserCommunityStaffRole {
 	@Column(name = "community_id", insertable = false, updatable = false)
 	private UUID communityId;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "staff_role_id", nullable = false)
-	private StaffRole staffRole;
-
-	@Column(name = "staff_role_id", insertable = false, updatable = false)
-	private UUID staffRoleId;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "role_code", nullable = false, length = 64)
+	private StaffRoleCode roleCode;
 
 	@Column(nullable = false)
 	@Builder.Default

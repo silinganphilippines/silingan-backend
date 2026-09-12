@@ -10,8 +10,6 @@ public record EffectivePermissionsResponse(
 	UUID userId,
 	UUID communityId,
 	StaffRoleCode roleCode,
-	Set<PermissionEnum> rolePermissions,
-	Set<PermissionEnum> directPermissions,
-	Set<PermissionEnum> effectivePermissions
+	Set<PermissionEnum> permissions
 ) {
 }

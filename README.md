@@ -438,52 +438,52 @@ Users in the seed data are pre-assigned to communities. When these users log in 
 
 ## Community Staff RBAC
 
-The backend now supports full **community-scoped RBAC** for staff accounts:
+The backend supports **community-scoped RBAC** for staff accounts using a fixed catalogue of
+predefined roles.
 
-- Roles are stored in the database (`staff_roles`)
-- Role permission templates are stored in the database (`staff_role_permissions`)
+- Roles and the permission matrix are defined in code (`StaffRoleCatalog`) and are **read-only**
 - Staff role assignments are stored per user per community (`user_community_staff_roles`)
-- Per-community role customization is supported through override rules (`community_role_permission_overrides`)
+- Custom roles, custom permissions, and per-community overrides are **not supported** for MVP
 
-### System Roles
+### Predefined Roles
 
-- `COMMUNITY_ADMIN`
-- `PMO_STAFF`
-- `SECURITY_ADMIN`
-- `MAINTENANCE_ADMIN`
-- `READ_ONLY_STAFF`
+| Role | Description |
+|------|-------------|
+| `COMMUNITY_ADMIN` | Full access to manage the community and staff (highest access) |
+| `PMO_STAFF` | Can manage announcements and reports |
+| `SECURITY_ADMIN` | Can view and manage security-related areas |
+| `MAINTENANCE_ADMIN` | Can view and manage maintenance-related areas |
+| `READ_ONLY_STAFF` | Can view information only |
+
+### Permission Matrix
+
+Each module resolves to one of `VIEW_AND_MANAGE`, `VIEW_ONLY`, or `NO_ACCESS`.
+
+| Module | Community Admin | PMO Staff | Security Admin | Maintenance Admin | Read-Only Staff |
+|--------|-----------------|-----------|----------------|-------------------|-----------------|
+| Community | View + Manage | View Only | View Only | View Only | View Only |
+| Residents | View + Manage | View Only | View Only | View Only | View Only |
+| Staff | View + Manage | View Only | View Only | View Only | View Only |
+| Announcements | View + Manage | View + Manage | View Only | View Only | View Only |
+| Reports | View + Manage | View + Manage | View + Manage | View + Manage | View Only |
+| Directory | View + Manage | View + Manage | View Only | View Only | View Only |
+| Settings | View + Manage | No Access | No Access | No Access | No Access |
 
 ### Effective Permission Resolution
 
-For each `(userId, communityId)` the system computes:
-
-1. Default role permissions from `staff_role_permissions`
-2. Community-specific overrides from `community_role_permission_overrides` (`ALLOW`/`DENY`)
-3. Direct user permissions from `user_community_permissions`
-
-`effectivePermissions = rolePermissionsWithOverrides + directUserPermissions`
+For each `(userId, communityId)` the effective permissions are exactly the permissions of the
+user's **active** assigned predefined role. There are no overrides and no per-user grants, so what
+the matrix shows is always what is enforced.
 
 These effective permissions are loaded into `UserContext` and used by `@RequiresPermission`.
 
 ### RBAC APIs
 
-#### Permission & Role Catalog
+#### Predefined Role Catalog & Permission Matrix (read-only)
 
+- `GET /api/v1/communities/{communityId}/roles`
+- `GET /api/v1/communities/{communityId}/roles/permissions`
 - `GET /api/v1/rbac/permissions`
-- `GET /api/v1/rbac/staff-roles`
-
-#### Community Role Templates
-
-- `GET /api/v1/communities/{communityId}/rbac/roles`
-- `PUT /api/v1/communities/{communityId}/rbac/roles/{roleCode}/permissions`
-
-Example request:
-
-```json
-{
-  "permissions": ["ANNOUNCEMENT_VIEW", "ANNOUNCEMENT_MANAGE", "REPORT_VIEW"]
-}
-```
 
 #### Staff Role Assignment
 
@@ -500,6 +500,10 @@ Example request:
 }
 ```
 
+#### Staff Directory
+
+- `GET /api/v1/communities/{communityId}/staff/directory`
+
 #### Current User Capabilities
 
 - `GET /api/v1/me/communities/{communityId}/capabilities`
@@ -511,7 +515,7 @@ Example response:
   "userId": "550e8400-e29b-41d4-a716-446655440001",
   "communityId": "550e8400-e29b-41d4-a716-446655440000",
   "roleCode": "PMO_STAFF",
-  "permissions": ["DASHBOARD_VIEW", "ANNOUNCEMENT_VIEW", "REPORT_VIEW"]
+  "permissions": ["ANNOUNCEMENT_VIEW", "ANNOUNCEMENT_MANAGE", "REPORT_VIEW", "REPORT_MANAGE"]
 }
 ```
 

@@ -34,14 +34,12 @@ spring:
 
   sql:
     init:
-      # Runs on every start, after Flyway has finished migrating (Spring Boot
-      # orders the SQL initializer after FlywayMigrationInitializer).
-      # Scripts are idempotent, so repeated runs are no-ops.
-      mode: always
-      # Reference data only. The `local` profile document at the bottom of this
-      # file appends demo-data.sql; dev and prod never load it.
-      data-locations: classpath:db/data/reference-data.sql
-      # Fail the boot on a bad script rather than starting with partial reference data.
+      # No seed data by default: the staff role catalog is owned by code
+      # (StaffRoleCatalog), not by reference-data rows. The `local` profile
+      # document at the bottom of this file adds demo-data.sql; dev and prod
+      # never load it.
+      mode: never
+      # Fail the boot on a bad script rather than starting with partial data.
       continue-on-error: false
 
   security:
@@ -128,9 +126,9 @@ sms:
 # ============================================
 # Local-profile overrides
 # --------------------------------------------
-# Loads the demo fixtures on top of the reference data. Kept in a
-# profile-scoped document so demo-data.sql is opt-in rather than opt-out and
-# cannot leak into a shared environment by default.
+# Loads the demo fixtures. Kept in a profile-scoped document so demo-data.sql
+# is opt-in rather than opt-out and cannot leak into a shared environment by
+# default.
 # ============================================
 ---
 spring:
@@ -139,6 +137,5 @@ spring:
       on-profile: local
   sql:
     init:
-      data-locations:
-        - classpath:db/data/reference-data.sql
-        - classpath:db/data/demo-data.sql
+      mode: always
+      data-locations: classpath:db/data/demo-data.sql

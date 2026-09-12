@@ -43,10 +43,9 @@ spring:
 
   sql:
     init:
-      # Re-asserts the staff role catalog on every start. Idempotent.
-      # demo-data.sql is deliberately NOT listed here - it is local-only.
-      mode: always
-      data-locations: classpath:db/data/reference-data.sql
+      # No seed data: the staff role catalog lives in code (StaffRoleCatalog)
+      # and demo-data.sql is local-only.
+      mode: never
       continue-on-error: false
   security:
     oauth2:

@@ -140,72 +140,28 @@ CREATE INDEX idx_community_code ON communities (community_code);
 CREATE INDEX idx_tenant_community ON communities (tenant_id, community_code);
 
 -- ---------------------------------------------------------------------
--- RBAC: role catalog and permission layers
+-- RBAC: staff role assignment
 -- ---------------------------------------------------------------------
+-- The role catalog and the permission matrix are defined in code
+-- (StaffRoleCatalog) and are read-only for MVP: there are no custom roles,
+-- custom permissions, or per-community overrides, so nothing about them is
+-- stored here. Only the user -> role binding is persisted.
 
-CREATE TABLE staff_roles (
-    id          UUID         NOT NULL,
-    is_system   BOOLEAN      NOT NULL,
-    created_at  TIMESTAMP,
-    updated_at  TIMESTAMP,
-    code        VARCHAR(64)  NOT NULL,
-    name        VARCHAR(120) NOT NULL,
-    description VARCHAR(255) NOT NULL,
-    CONSTRAINT pk_staff_roles PRIMARY KEY (id),
-    CONSTRAINT uk_staff_roles_code UNIQUE (code)
-);
-
--- Layer 1: platform-wide default permissions for a role.
-CREATE TABLE staff_role_permissions (
-    id            UUID         NOT NULL,
-    staff_role_id UUID,
-    permission    VARCHAR(100) NOT NULL,
-    CONSTRAINT pk_staff_role_permissions PRIMARY KEY (id),
-    CONSTRAINT uk_srp_role_permission UNIQUE (staff_role_id, permission)
-);
-
-CREATE INDEX idx_srp_role ON staff_role_permissions (staff_role_id);
-
--- Layer 2: per-community ALLOW/DENY deltas on top of layer 1.
-CREATE TABLE community_role_permission_overrides (
-    id            UUID         NOT NULL,
-    created_at    TIMESTAMP,
-    community_id  UUID,
-    staff_role_id UUID,
-    permission    VARCHAR(100) NOT NULL,
-    effect        VARCHAR(12)  NOT NULL,
-    CONSTRAINT pk_crpo PRIMARY KEY (id),
-    CONSTRAINT uk_crpo_community_role_permission UNIQUE (community_id, staff_role_id, permission)
-);
-
-CREATE INDEX idx_crpo_community_role ON community_role_permission_overrides (community_id, staff_role_id);
-
--- Layer 3: additive per-user grants (there is no user-level DENY by design).
-CREATE TABLE user_community_permissions (
-    id           UUID         NOT NULL,
+CREATE TABLE user_community_staff_roles (
+    id           UUID        NOT NULL,
+    active       BOOLEAN     NOT NULL,
+    assigned_at  TIMESTAMP   NOT NULL,
+    updated_at   TIMESTAMP,
+    assigned_by  UUID,
     community_id UUID,
     user_id      UUID,
-    permission   VARCHAR(255) NOT NULL,
-    CONSTRAINT pk_ucp PRIMARY KEY (id),
-    CONSTRAINT uk_ucp_user_community_permission UNIQUE (user_id, community_id, permission)
-);
-
--- Binds a user to one staff role within one community.
-CREATE TABLE user_community_staff_roles (
-    id            UUID      NOT NULL,
-    active        BOOLEAN   NOT NULL,
-    assigned_at   TIMESTAMP NOT NULL,
-    updated_at    TIMESTAMP,
-    assigned_by   UUID,
-    community_id  UUID,
-    staff_role_id UUID,
-    user_id       UUID,
+    role_code    VARCHAR(64) NOT NULL,
     CONSTRAINT pk_ucsr PRIMARY KEY (id),
     CONSTRAINT uk_ucsr_user_community UNIQUE (user_id, community_id)
 );
 
 CREATE INDEX idx_ucsr_user_community ON user_community_staff_roles (user_id, community_id);
-CREATE INDEX idx_ucsr_community_role ON user_community_staff_roles (community_id, staff_role_id);
+CREATE INDEX idx_ucsr_community_role ON user_community_staff_roles (community_id, role_code);
 
 -- Community membership (the tenant boundary CommunityScopeGuard reads).
 CREATE TABLE user_communities (
@@ -326,17 +282,8 @@ ALTER TABLE communities ADD CONSTRAINT fk_communities_address FOREIGN KEY (addre
 ALTER TABLE communities ADD CONSTRAINT fk_communities_logo FOREIGN KEY (logo_id) REFERENCES media (id);
 ALTER TABLE communities ADD CONSTRAINT fk_communities_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id);
 
-ALTER TABLE staff_role_permissions ADD CONSTRAINT fk_srp_staff_role FOREIGN KEY (staff_role_id) REFERENCES staff_roles (id);
-
-ALTER TABLE community_role_permission_overrides ADD CONSTRAINT fk_crpo_community FOREIGN KEY (community_id) REFERENCES communities (id);
-ALTER TABLE community_role_permission_overrides ADD CONSTRAINT fk_crpo_staff_role FOREIGN KEY (staff_role_id) REFERENCES staff_roles (id);
-
-ALTER TABLE user_community_permissions ADD CONSTRAINT fk_ucp_community FOREIGN KEY (community_id) REFERENCES communities (id);
-ALTER TABLE user_community_permissions ADD CONSTRAINT fk_ucp_user FOREIGN KEY (user_id) REFERENCES users (id);
-
 ALTER TABLE user_community_staff_roles ADD CONSTRAINT fk_ucsr_assigned_by FOREIGN KEY (assigned_by) REFERENCES users (id);
 ALTER TABLE user_community_staff_roles ADD CONSTRAINT fk_ucsr_community FOREIGN KEY (community_id) REFERENCES communities (id);
-ALTER TABLE user_community_staff_roles ADD CONSTRAINT fk_ucsr_staff_role FOREIGN KEY (staff_role_id) REFERENCES staff_roles (id);
 ALTER TABLE user_community_staff_roles ADD CONSTRAINT fk_ucsr_user FOREIGN KEY (user_id) REFERENCES users (id);
 
 ALTER TABLE user_communities ADD CONSTRAINT fk_user_communities_community FOREIGN KEY (community_id) REFERENCES communities (id);

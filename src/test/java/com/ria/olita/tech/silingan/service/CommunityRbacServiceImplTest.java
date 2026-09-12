@@ -2,455 +2,138 @@ package com.ria.olita.tech.silingan.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-import com.ria.olita.tech.silingan.dto.req.AssignStaffRoleRequest;
-import com.ria.olita.tech.silingan.dto.req.UpdateCommunityRolePermissionsRequest;
-import com.ria.olita.tech.silingan.dto.res.CurrentUserCapabilitiesResponse;
-import com.ria.olita.tech.silingan.dto.res.EffectivePermissionsResponse;
-import com.ria.olita.tech.silingan.dto.res.StaffRoleAssignmentResponse;
-import com.ria.olita.tech.silingan.dto.res.StaffRoleTemplateResponse;
-import com.ria.olita.tech.silingan.entity.Community;
-import com.ria.olita.tech.silingan.entity.CommunityRolePermissionOverride;
-import com.ria.olita.tech.silingan.entity.SilinganRealmRole;
-import com.ria.olita.tech.silingan.entity.StaffRole;
-import com.ria.olita.tech.silingan.entity.User;
-import com.ria.olita.tech.silingan.entity.UserCommunity;
+import com.ria.olita.tech.silingan.dto.res.PermissionMatrixResponse;
+import com.ria.olita.tech.silingan.dto.res.StaffRoleResponse;
 import com.ria.olita.tech.silingan.entity.UserCommunityStaffRole;
+import com.ria.olita.tech.silingan.entity.rbac.AccessLevel;
+import com.ria.olita.tech.silingan.entity.rbac.Domain;
 import com.ria.olita.tech.silingan.entity.rbac.PermissionEnum;
-import com.ria.olita.tech.silingan.entity.rbac.PermissionOverrideEffect;
 import com.ria.olita.tech.silingan.entity.rbac.StaffRoleCode;
-import com.ria.olita.tech.silingan.exception.ForbiddenException;
+import com.ria.olita.tech.silingan.exception.NotFoundException;
 import com.ria.olita.tech.silingan.repository.CommunityRepository;
-import com.ria.olita.tech.silingan.repository.CommunityRolePermissionOverrideRepository;
-import com.ria.olita.tech.silingan.repository.StaffRolePermissionRepository;
-import com.ria.olita.tech.silingan.repository.StaffRoleRepository;
-import com.ria.olita.tech.silingan.repository.UserCommunityPermissionRepository;
 import com.ria.olita.tech.silingan.repository.UserCommunityRepository;
 import com.ria.olita.tech.silingan.repository.UserCommunityStaffRoleRepository;
 import com.ria.olita.tech.silingan.repository.UserRepository;
-import com.ria.olita.tech.silingan.security.context.UserContext;
 import com.ria.olita.tech.silingan.security.scope.CommunityScopeGuard;
 import com.ria.olita.tech.silingan.security.scope.StaffGrantGuard;
-import com.ria.olita.tech.silingan.security.context.UserContextHolder;
 import com.ria.olita.tech.silingan.service.impl.CommunityRbacServiceImpl;
 
 class CommunityRbacServiceImplTest {
 
-	@AfterEach
-	void tearDown() {
-		UserContextHolder.clear();
-	}
+	private final UserCommunityStaffRoleRepository staffRoleAssignmentRepository =
+		Mockito.mock(UserCommunityStaffRoleRepository.class);
+	private final UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
+	private final UserRepository userRepository = Mockito.mock(UserRepository.class);
+	private final CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
 
-	private static void givenPlatformAdminCaller() {
-		UserContextHolder.set(UserContext.builder()
-			.userId(UUID.randomUUID().toString())
-			.roles(List.of(SilinganRealmRole.PLATFORM_ADMIN))
-			.build());
+	private final CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
+		staffRoleAssignmentRepository,
+		userCommunityRepository,
+		userRepository,
+		communityRepository,
+		new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
+	);
+
+	@Test
+	void roleCatalogReturnsTheFivePredefinedRolesWithCommunityAdminAsHighestAccess() {
+		UUID communityId = UUID.randomUUID();
+		Mockito.when(communityRepository.existsById(communityId)).thenReturn(true);
+
+		List<StaffRoleResponse> roles = service.getRoleCatalog(communityId);
+
+		assertThat(roles).extracting(StaffRoleResponse::roleCode).containsExactly(
+			StaffRoleCode.COMMUNITY_ADMIN,
+			StaffRoleCode.PMO_STAFF,
+			StaffRoleCode.SECURITY_ADMIN,
+			StaffRoleCode.MAINTENANCE_ADMIN,
+			StaffRoleCode.READ_ONLY_STAFF
+		);
+		assertThat(roles).allSatisfy(role -> {
+			assertThat(role.name()).isNotBlank();
+			assertThat(role.description()).isNotBlank();
+		});
+		assertThat(roles)
+			.filteredOn(StaffRoleResponse::highestAccess)
+			.extracting(StaffRoleResponse::roleCode)
+			.containsExactly(StaffRoleCode.COMMUNITY_ADMIN);
 	}
 
 	@Test
-	void shouldResolveEffectivePermissionsUsingRoleDefaultsOverridesAndDirectGrants() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
-		UUID userId = UUID.randomUUID();
+	void roleCatalogFailsForUnknownCommunity() {
 		UUID communityId = UUID.randomUUID();
-		UUID roleId = UUID.randomUUID();
+		Mockito.when(communityRepository.existsById(communityId)).thenReturn(false);
 
-		StaffRole role = StaffRole.builder().id(roleId).code(StaffRoleCode.PMO_STAFF).build();
-		UserCommunityStaffRole assignment = UserCommunityStaffRole.builder()
-			.userId(userId)
-			.communityId(communityId)
-			.staffRole(role)
-			.active(true)
-			.build();
+		assertThatThrownBy(() -> service.getRoleCatalog(communityId))
+			.isInstanceOf(NotFoundException.class);
+	}
 
-		when(assignmentRepository.findByUserIdAndCommunityIdAndActiveTrue(userId, communityId))
-			.thenReturn(Optional.of(assignment));
-		when(staffRolePermissionRepository.findPermissionsByStaffRoleId(roleId))
-			.thenReturn(List.of(PermissionEnum.DASHBOARD_VIEW, PermissionEnum.REPORT_VIEW));
-		when(overrideRepository.findByCommunityIdAndStaffRoleId(communityId, roleId))
-			.thenReturn(List.of(
-				CommunityRolePermissionOverride.builder()
-					.permission(PermissionEnum.DASHBOARD_VIEW)
-					.effect(PermissionOverrideEffect.DENY)
-					.build(),
-				CommunityRolePermissionOverride.builder()
-					.permission(PermissionEnum.DOCUMENT_VIEW)
-					.effect(PermissionOverrideEffect.ALLOW)
-					.build()
-			));
-		when(directPermissionRepository.findPermissionsByUserIdAndCommunityId(userId, communityId))
-			.thenReturn(List.of(PermissionEnum.ANNOUNCEMENT_MANAGE));
+	@Test
+	void permissionMatrixExposesRolesAsColumnsAndModulesAsRows() {
+		UUID communityId = UUID.randomUUID();
+		Mockito.when(communityRepository.existsById(communityId)).thenReturn(true);
+
+		PermissionMatrixResponse matrix = service.getPermissionMatrix(communityId);
+
+		assertThat(matrix.roles()).hasSize(StaffRoleCode.values().length);
+		assertThat(matrix.modules()).hasSize(Domain.values().length);
+		assertThat(matrix.modules())
+			.allSatisfy(row -> assertThat(row.access()).hasSize(StaffRoleCode.values().length));
+
+		assertThat(cell(matrix, Domain.SETTINGS, StaffRoleCode.COMMUNITY_ADMIN)).isEqualTo(AccessLevel.VIEW_AND_MANAGE);
+		assertThat(cell(matrix, Domain.SETTINGS, StaffRoleCode.PMO_STAFF)).isEqualTo(AccessLevel.NO_ACCESS);
+		assertThat(cell(matrix, Domain.ANNOUNCEMENT, StaffRoleCode.PMO_STAFF)).isEqualTo(AccessLevel.VIEW_AND_MANAGE);
+		assertThat(cell(matrix, Domain.REPORT, StaffRoleCode.SECURITY_ADMIN)).isEqualTo(AccessLevel.VIEW_AND_MANAGE);
+		assertThat(cell(matrix, Domain.COMMUNITY, StaffRoleCode.READ_ONLY_STAFF)).isEqualTo(AccessLevel.VIEW_ONLY);
+	}
+
+	@Test
+	void effectivePermissionsComeFromTheAssignedPredefinedRoleOnly() {
+		UUID communityId = UUID.randomUUID();
+		UUID userId = UUID.randomUUID();
+		Mockito.when(staffRoleAssignmentRepository.findByUserIdAndCommunityIdAndActiveTrue(userId, communityId))
+			.thenReturn(Optional.of(UserCommunityStaffRole.builder()
+				.roleCode(StaffRoleCode.PMO_STAFF)
+				.build()));
 
 		assertThat(service.resolveEffectivePermissions(userId, communityId))
 			.containsExactlyInAnyOrder(
+				PermissionEnum.COMMUNITY_VIEW,
+				PermissionEnum.RESIDENT_VIEW,
+				PermissionEnum.STAFF_VIEW,
+				PermissionEnum.ANNOUNCEMENT_VIEW,
+				PermissionEnum.ANNOUNCEMENT_MANAGE,
 				PermissionEnum.REPORT_VIEW,
-				PermissionEnum.DOCUMENT_VIEW,
-				PermissionEnum.ANNOUNCEMENT_MANAGE
+				PermissionEnum.REPORT_MANAGE,
+				PermissionEnum.DIRECTORY_VIEW,
+				PermissionEnum.DIRECTORY_MANAGE
 			);
 	}
 
 	@Test
-	void shouldUpdateCommunityRolePermissionsThroughOverrides() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
-		UUID communityId = UUID.randomUUID();
-		UUID roleId = UUID.randomUUID();
-		StaffRole role = StaffRole.builder()
-			.id(roleId)
-			.code(StaffRoleCode.PMO_STAFF)
-			.name("PMO Staff")
-			.description("Operations")
-			.build();
-
-		when(communityRepository.existsById(communityId)).thenReturn(true);
-		when(staffRoleRepository.findByCode(StaffRoleCode.PMO_STAFF)).thenReturn(Optional.of(role));
-		when(staffRolePermissionRepository.findPermissionsByStaffRoleId(roleId))
-			.thenReturn(List.of(PermissionEnum.DASHBOARD_VIEW, PermissionEnum.REPORT_VIEW));
-
-		givenPlatformAdminCaller();
-
-		StaffRoleTemplateResponse response = service.updateCommunityRolePermissions(
-			communityId,
-			StaffRoleCode.PMO_STAFF,
-			new UpdateCommunityRolePermissionsRequest(EnumSet.of(PermissionEnum.REPORT_VIEW, PermissionEnum.DOCUMENT_VIEW))
-		);
-
-		assertThat(response.permissions()).containsExactlyInAnyOrder(PermissionEnum.REPORT_VIEW, PermissionEnum.DOCUMENT_VIEW);
-		assertThat(response.customized()).isTrue();
-
-		verify(overrideRepository).deleteByCommunityIdAndStaffRoleId(communityId, roleId);
-
-		@SuppressWarnings("unchecked")
-		ArgumentCaptor<List<CommunityRolePermissionOverride>> captor = ArgumentCaptor.forClass((Class<List<CommunityRolePermissionOverride>>) (Class<?>) List.class);
-		verify(overrideRepository).saveAll(captor.capture());
-
-		assertThat(captor.getValue())
-			.extracting(CommunityRolePermissionOverride::getPermission, CommunityRolePermissionOverride::getEffect)
-			.containsExactlyInAnyOrder(
-				org.assertj.core.groups.Tuple.tuple(PermissionEnum.DASHBOARD_VIEW, PermissionOverrideEffect.DENY),
-				org.assertj.core.groups.Tuple.tuple(PermissionEnum.DOCUMENT_VIEW, PermissionOverrideEffect.ALLOW)
-			);
-	}
-
-	@Test
-	void shouldAssignRoleToCommunityStaffMember() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
-		UUID userId = UUID.randomUUID();
-		UUID communityId = UUID.randomUUID();
-		UUID roleId = UUID.randomUUID();
-
-		User user = User.builder().id(userId).build();
-		Community community = Community.builder().id(communityId).build();
-		StaffRole role = StaffRole.builder().id(roleId).code(StaffRoleCode.SECURITY_ADMIN).build();
-		UserCommunity membership = UserCommunity.builder().user(user).community(community).role(SilinganRealmRole.STAFF).build();
-
-		when(communityRepository.findById(communityId)).thenReturn(Optional.of(community));
-		when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-		when(userCommunityRepository.findByUserIdAndCommunityId(userId, communityId)).thenReturn(Optional.of(membership));
-		when(staffRoleRepository.findByCode(StaffRoleCode.SECURITY_ADMIN)).thenReturn(Optional.of(role));
-		when(assignmentRepository.findByUserIdAndCommunityId(userId, communityId)).thenReturn(Optional.empty());
-		when(assignmentRepository.save(any(UserCommunityStaffRole.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-		givenPlatformAdminCaller();
-
-		StaffRoleAssignmentResponse response = service.assignStaffRole(
-			communityId,
-			userId,
-			new AssignStaffRoleRequest(StaffRoleCode.SECURITY_ADMIN, true)
-		);
-
-		assertThat(response.userId()).isEqualTo(userId);
-		assertThat(response.communityId()).isEqualTo(communityId);
-		assertThat(response.roleCode()).isEqualTo(StaffRoleCode.SECURITY_ADMIN);
-		assertThat(response.active()).isTrue();
-		assertThat(response.assignedAt()).isNotNull();
-	}
-
-	@Test
-	void shouldRejectAssigningRoleToNonStaffMember() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
-		UUID userId = UUID.randomUUID();
-		UUID communityId = UUID.randomUUID();
-		User user = User.builder().id(userId).build();
-		Community community = Community.builder().id(communityId).build();
-		UserCommunity membership = UserCommunity.builder().user(user).community(community).role(SilinganRealmRole.RESIDENT).build();
-
-		when(communityRepository.findById(communityId)).thenReturn(Optional.of(community));
-		when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-		when(userCommunityRepository.findByUserIdAndCommunityId(userId, communityId)).thenReturn(Optional.of(membership));
-
-		givenPlatformAdminCaller();
-
-		assertThatThrownBy(() -> service.assignStaffRole(
-			communityId,
-			userId,
-			new AssignStaffRoleRequest(StaffRoleCode.PMO_STAFF, true)
-		)).isInstanceOf(ForbiddenException.class);
-	}
-
-	@Test
-	void shouldReturnCommunityRoleTemplateWithOverrideApplied() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
-		UUID communityId = UUID.randomUUID();
-		UUID roleId = UUID.randomUUID();
-		StaffRole role = StaffRole.builder()
-			.id(roleId)
-			.code(StaffRoleCode.PMO_STAFF)
-			.name("PMO Staff")
-			.description("Operations")
-			.build();
-
-		when(communityRepository.existsById(communityId)).thenReturn(true);
-		when(staffRoleRepository.findAllByOrderByNameAsc()).thenReturn(List.of(role));
-		when(staffRolePermissionRepository.findPermissionsByStaffRoleId(roleId))
-			.thenReturn(List.of(PermissionEnum.ANNOUNCEMENT_VIEW, PermissionEnum.REPORT_VIEW));
-		when(overrideRepository.findByCommunityIdAndStaffRoleId(communityId, roleId))
-			.thenReturn(List.of(
-				CommunityRolePermissionOverride.builder()
-					.permission(PermissionEnum.REPORT_VIEW)
-					.effect(PermissionOverrideEffect.DENY)
-					.build(),
-				CommunityRolePermissionOverride.builder()
-					.permission(PermissionEnum.DOCUMENT_VIEW)
-					.effect(PermissionOverrideEffect.ALLOW)
-					.build()
-			));
-
-		List<StaffRoleTemplateResponse> roles = service.getCommunityRoleTemplates(communityId);
-
-		assertThat(roles).hasSize(1);
-		assertThat(roles.getFirst().permissions())
-			.containsExactlyInAnyOrder(PermissionEnum.ANNOUNCEMENT_VIEW, PermissionEnum.DOCUMENT_VIEW);
-		assertThat(roles.getFirst().customized()).isTrue();
-	}
-
-	@Test
-	void shouldReturnAllCapabilitiesForPlatformAdmin() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
+	void userWithoutAnActiveRoleHasNoPermissions() {
 		UUID communityId = UUID.randomUUID();
 		UUID userId = UUID.randomUUID();
-		when(communityRepository.existsById(communityId)).thenReturn(true);
+		Mockito.when(staffRoleAssignmentRepository.findByUserIdAndCommunityIdAndActiveTrue(userId, communityId))
+			.thenReturn(Optional.empty());
 
-		UserContextHolder.set(UserContext.builder()
-			.userId(userId.toString())
-			.communityId(communityId.toString())
-			.roles(List.of(SilinganRealmRole.PLATFORM_ADMIN))
-			.build());
-
-		CurrentUserCapabilitiesResponse response = service.getCurrentUserCapabilities(communityId);
-
-		assertThat(response.userId()).isEqualTo(userId);
-		assertThat(response.permissions()).containsExactlyInAnyOrder(PermissionEnum.values());
+		assertThat(service.resolveEffectivePermissions(userId, communityId)).isEmpty();
 	}
 
-	@Test
-	void shouldReturnUnassignedRoleWhenNoStaffRoleExists() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
-		UUID communityId = UUID.randomUUID();
-		UUID userId = UUID.randomUUID();
-		when(communityRepository.existsById(communityId)).thenReturn(true);
-		when(userRepository.existsById(userId)).thenReturn(true);
-		when(assignmentRepository.findByUserIdAndCommunityId(userId, communityId)).thenReturn(Optional.empty());
-
-		StaffRoleAssignmentResponse response = service.getStaffRoleAssignment(communityId, userId);
-
-		assertThat(response.userId()).isEqualTo(userId);
-		assertThat(response.communityId()).isEqualTo(communityId);
-		assertThat(response.roleCode()).isNull();
-		assertThat(response.active()).isFalse();
-	}
-
-	@Test
-	void shouldReturnDirectPermissionsWhenNoActiveStaffRoleAssignment() {
-		StaffRoleRepository staffRoleRepository = Mockito.mock(StaffRoleRepository.class);
-		StaffRolePermissionRepository staffRolePermissionRepository = Mockito.mock(StaffRolePermissionRepository.class);
-		CommunityRolePermissionOverrideRepository overrideRepository = Mockito.mock(CommunityRolePermissionOverrideRepository.class);
-		UserCommunityStaffRoleRepository assignmentRepository = Mockito.mock(UserCommunityStaffRoleRepository.class);
-		UserCommunityPermissionRepository directPermissionRepository = Mockito.mock(UserCommunityPermissionRepository.class);
-		UserCommunityRepository userCommunityRepository = Mockito.mock(UserCommunityRepository.class);
-		UserRepository userRepository = Mockito.mock(UserRepository.class);
-		CommunityRepository communityRepository = Mockito.mock(CommunityRepository.class);
-
-		CommunityRbacServiceImpl service = new CommunityRbacServiceImpl(
-			staffRoleRepository,
-			staffRolePermissionRepository,
-			overrideRepository,
-			assignmentRepository,
-			directPermissionRepository,
-			userCommunityRepository,
-			userRepository,
-			communityRepository,
-			new StaffGrantGuard(new CommunityScopeGuard(userCommunityRepository))
-		);
-
-		UUID communityId = UUID.randomUUID();
-		UUID userId = UUID.randomUUID();
-
-		when(communityRepository.existsById(communityId)).thenReturn(true);
-		when(userRepository.existsById(userId)).thenReturn(true);
-		when(assignmentRepository.findByUserIdAndCommunityIdAndActiveTrue(userId, communityId)).thenReturn(Optional.empty());
-		when(directPermissionRepository.findPermissionsByUserIdAndCommunityId(userId, communityId))
-			.thenReturn(List.of(PermissionEnum.DIRECTORY_VIEW, PermissionEnum.REPORT_VIEW));
-
-		EffectivePermissionsResponse response = service.getEffectivePermissions(communityId, userId);
-
-		assertThat(response.roleCode()).isNull();
-		assertThat(response.rolePermissions()).isEmpty();
-		assertThat(response.directPermissions())
-			.containsExactlyInAnyOrder(PermissionEnum.DIRECTORY_VIEW, PermissionEnum.REPORT_VIEW);
-		assertThat(response.effectivePermissions())
-			.containsExactlyInAnyOrder(PermissionEnum.DIRECTORY_VIEW, PermissionEnum.REPORT_VIEW);
+	private AccessLevel cell(PermissionMatrixResponse matrix, Domain module, StaffRoleCode roleCode) {
+		return matrix.modules().stream()
+			.filter(row -> row.module().equals(module.getValue()))
+			.flatMap(row -> row.access().stream())
+			.filter(access -> access.roleCode() == roleCode)
+			.map(PermissionMatrixResponse.MatrixCell::accessLevel)
+			.findFirst()
+			.orElseThrow();
 	}
 }
