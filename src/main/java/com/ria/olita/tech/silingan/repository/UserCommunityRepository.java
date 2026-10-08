@@ -17,16 +17,43 @@ public interface UserCommunityRepository extends JpaRepository<UserCommunity, UU
 
 	@Query("SELECT CASE WHEN COUNT(uc) > 0 THEN true ELSE false END " +
 			"FROM UserCommunity uc " +
-			"WHERE uc.community.id = :communityId AND uc.role = :role")
+			"JOIN uc.user u " +
+			"WHERE uc.community.id = :communityId AND uc.role = :role AND u.status = 'ACTIVE'")
 	boolean hasRoleInCommunity(UUID communityId, SilinganRealmRole role);
 
 	Optional<UserCommunity> findByUserIdAndCommunityId(UUID userId, UUID communityId);
+
+	@Query("SELECT uc FROM UserCommunity uc " +
+			"JOIN uc.user u " +
+			"WHERE uc.user.id = :userId " +
+			"AND uc.community.id = :communityId " +
+			"AND u.status = 'ACTIVE'")
+	Optional<UserCommunity> findByUserIdAndCommunityIdAndUserStatusActive(UUID userId, UUID communityId);
+
+	@Query("SELECT CASE WHEN COUNT(uc) > 0 THEN true ELSE false END " +
+			"FROM UserCommunity uc " +
+			"JOIN uc.user u " +
+			"WHERE uc.community.id = :communityId " +
+			"AND LOWER(u.email) = LOWER(:email) " +
+			"AND u.status = 'ACTIVE'")
+	boolean existsActiveMemberByEmailAndCommunityId(UUID communityId, String email);
+
+	@Query("""
+		SELECT uc
+		FROM UserCommunity uc
+		JOIN FETCH uc.community c
+		WHERE uc.user.id = :userId
+			AND uc.user.status = 'ACTIVE'
+		ORDER BY c.name
+		""")
+	List<UserCommunity> findActiveByUserIdWithCommunity(UUID userId);
 
 	@Query("""
 		SELECT uc
 		FROM UserCommunity uc
 		JOIN FETCH uc.user u
 		WHERE uc.community.id = :communityId
+			AND uc.user.status = 'ACTIVE'
 			AND uc.role IN :roles
 			AND (
 				:searchTerm IS NULL

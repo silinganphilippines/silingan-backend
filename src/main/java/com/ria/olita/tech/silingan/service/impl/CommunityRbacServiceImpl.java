@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import com.ria.olita.tech.silingan.dto.req.AssignStaffRoleRequest;
 import com.ria.olita.tech.silingan.dto.res.AvailablePermissionsResponse;
 import com.ria.olita.tech.silingan.dto.res.AvailablePermissionsResponse.PermissionInfo;
 import com.ria.olita.tech.silingan.dto.res.CurrentUserCapabilitiesResponse;
+import com.ria.olita.tech.silingan.dto.res.CurrentUserCommunityPermissionsResponse;
 import com.ria.olita.tech.silingan.dto.res.EffectivePermissionsResponse;
 import com.ria.olita.tech.silingan.dto.res.PermissionMatrixResponse;
 import com.ria.olita.tech.silingan.dto.res.PermissionMatrixResponse.MatrixCell;
@@ -164,11 +167,16 @@ public class CommunityRbacServiceImpl implements CommunityRbacService {
 
 		staffGrantGuard.assertNotSelf(userId, "change the staff role");
 
-		UserCommunity membership = userCommunityRepository.findByUserIdAndCommunityId(userId, communityId)
-			.orElseThrow(() -> new NotFoundException("User is not a member of the community"));
+		UserCommunity membership = userCommunityRepository.findByUserIdAndCommunityIdAndUserStatusActive(userId, communityId)
+			.orElseThrow(() -> new NotFoundException("User is not an active member of the community"));
 
 		if (membership.getRole() != SilinganRealmRole.STAFF && membership.getRole() != SilinganRealmRole.COMMUNITY_ADMIN) {
 			throw new ForbiddenException("Staff role can only be assigned to STAFF or COMMUNITY_ADMIN members");
+		}
+
+		if (membership.getRole() == SilinganRealmRole.COMMUNITY_ADMIN
+			&& (request.roleCode() != StaffRoleCode.COMMUNITY_ADMIN || !request.active())) {
+			throw new ForbiddenException("The final active Community Admin cannot be deactivated or assigned a lower role");
 		}
 
 		staffGrantGuard.assertCanAssignRole(
@@ -238,7 +246,7 @@ public class CommunityRbacServiceImpl implements CommunityRbacService {
 	 * can decide what to render. Not an authorization decision — that is always re-made server-side
 	 * by {@code PermissionAspect}.
 	 *
-	 * <p>Usage: {@code GET /api/v1/me/communities/{communityId}/capabilities}.
+	 * <p>Usage: {@code GET /api/v1/communities/{communityId}/me/permissions}.
 	 */
 	@Override
 	@Transactional(readOnly = true)
@@ -272,6 +280,58 @@ public class CommunityRbacServiceImpl implements CommunityRbacService {
 			resolveAssignedRole(userId, communityId).orElse(null),
 			resolveEffectivePermissions(userId, communityId)
 		);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<CurrentUserCommunityPermissionsResponse> getCurrentUserCommunities() {
+		UserContext userContext = UserContextHolder.get();
+		if (userContext == null || userContext.userId() == null) {
+			throw new ForbiddenException("No authenticated user context");
+		}
+
+		UUID userId;
+		try {
+			userId = UUID.fromString(userContext.userId());
+		} catch (IllegalArgumentException ex) {
+			throw new ForbiddenException("Invalid authenticated user context");
+		}
+
+		UUID selectedCommunityId = null;
+		if (userContext.communityId() != null && !userContext.communityId().isBlank()) {
+			try {
+				selectedCommunityId = UUID.fromString(userContext.communityId());
+			} catch (IllegalArgumentException ignored) {
+				selectedCommunityId = null;
+			}
+		}
+
+		List<UserCommunity> memberships = userCommunityRepository.findActiveByUserIdWithCommunity(userId);
+		List<UUID> communityIds = memberships.stream()
+			.map(membership -> membership.getCommunity().getId())
+			.toList();
+
+		Map<UUID, StaffRoleCode> assignedRoleByCommunityId = new HashMap<>();
+		for (UserCommunityStaffRole assignment : userCommunityStaffRoleRepository
+			.findByUserIdAndCommunityIdInAndActiveTrue(userId, communityIds)) {
+			assignedRoleByCommunityId.put(assignment.getCommunityId(), assignment.getRoleCode());
+		}
+
+		UUID finalSelectedCommunityId = selectedCommunityId;
+		return memberships.stream()
+			.map(membership -> {
+				UUID communityId = membership.getCommunity().getId();
+				StaffRoleCode roleCode = resolveCommunityRoleCode(membership, assignedRoleByCommunityId.get(communityId));
+				return new CurrentUserCommunityPermissionsResponse(
+					communityId,
+					membership.getCommunity().getCommunityCode(),
+					membership.getCommunity().getName(),
+					communityId.equals(finalSelectedCommunityId),
+					roleCode,
+					roleCode == null ? Set.of() : StaffRoleCatalog.permissions(roleCode)
+				);
+			})
+			.toList();
 	}
 
 	/**
@@ -374,5 +434,15 @@ public class CommunityRbacServiceImpl implements CommunityRbacService {
 		} catch (IllegalArgumentException ex) {
 			return Optional.empty();
 		}
+	}
+
+	private StaffRoleCode resolveCommunityRoleCode(UserCommunity membership, StaffRoleCode assignedRole) {
+		if (assignedRole != null) {
+			return assignedRole;
+		}
+		if (membership.getRole() == SilinganRealmRole.COMMUNITY_ADMIN) {
+			return StaffRoleCode.COMMUNITY_ADMIN;
+		}
+		return null;
 	}
 }

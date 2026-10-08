@@ -13,10 +13,14 @@ import com.ria.olita.tech.silingan.util.ContactNormalizer;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -74,6 +78,18 @@ public class User extends BaseEntity {
 	)
 	@Builder.Default
 	private List<UserCommunity> userCommunities = new ArrayList<>();
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "last_selected_community_id")
+	private Community lastSelectedCommunity;
+
+	@Column(name = "last_selected_community_id", insertable = false, updatable = false)
+	private UUID selectedCommunityId;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	@Builder.Default
+	private UserStatus status = UserStatus.PENDING;
 
 	public void addCommunity(UserCommunity uc) {
 		userCommunities.add(uc);
