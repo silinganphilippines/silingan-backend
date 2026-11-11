@@ -1,0 +1,45 @@
+@startuml
+
+title Registration OTP Verification (with Retry)
+
+actor User
+participant Frontend
+participant API
+participant Keycloak
+participant Twilio
+
+User -> Frontend : Register Account
+Frontend -> API : POST /register
+
+API -> Keycloak : Create User\n(enabled=false)
+Keycloak --> API : Created
+
+API -> Twilio : Send OTP
+Twilio --> API : OTP Sent
+
+API --> Frontend : OTP Required
+
+loop OTP Verification
+    User -> Frontend : Enter OTP
+    Frontend -> API : POST /verify-otp
+
+    API -> Twilio : Validate OTP
+    Twilio --> API : Result
+
+    alt OTP Valid
+        API -> Keycloak : Set enabled=true\nmobileVerified=true
+        Keycloak --> API : Success
+        API --> Frontend : Verification Successful
+        break
+    else OTP Invalid
+        API --> Frontend : Invalid OTP
+    else OTP Expired
+        API --> Frontend : OTP Expired
+        User -> Frontend : Resend OTP
+        Frontend -> API : POST /resend-otp
+        API -> Twilio : Send New OTP
+        Twilio --> API : OTP Sent
+    end
+end
+
+@enduml

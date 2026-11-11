@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface CommunityService {
-	boolean validate(String communityId);
 
 	CommunityResponse create(CreateCommunityRequest request);
 
@@ -28,9 +27,11 @@ public interface CommunityService {
 
 	CommunityResponse update(UUID id, UpdateCommunityRequest request);
 
-	CommunityResponse archive(UUID id);
+	void updateStatus(UUID id, CommunityStatus status);
 
 	void delete(UUID id);
 
 	void switchCommunity(UUID communityId);
+
+	List<CommunityResponse> searchByCommunityNameOrCode(String searchTerm);
 }

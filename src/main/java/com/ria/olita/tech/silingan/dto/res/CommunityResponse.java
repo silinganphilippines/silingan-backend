@@ -20,7 +20,7 @@ public record CommunityResponse(
 	Double latitude,
 	Double longitude,
 	CommunityStatus status,
-	int memberCount,
+
 
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt,

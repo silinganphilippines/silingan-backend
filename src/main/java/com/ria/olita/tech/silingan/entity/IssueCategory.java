@@ -44,6 +44,9 @@ public class IssueCategory extends BaseEntity {
 	@JoinColumn(name = "community_id", columnDefinition = "UUID NOT NULL")
 	private Community community;
 
+	@Column(name = "community_id", insertable = false, updatable = false)
+	private UUID communityId;
+
 	// Display order for the category
 	@Column(name = "display_order", columnDefinition = "INTEGER")
 	private Integer displayOrder;

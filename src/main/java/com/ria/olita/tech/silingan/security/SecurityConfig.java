@@ -8,12 +8,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +26,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.ria.olita.tech.silingan.config.KeycloakProperties;
+import com.ria.olita.tech.silingan.security.context.OtpVerificationFilter;
 import com.ria.olita.tech.silingan.security.context.UserContextFilter;
 
 import lombok.RequiredArgsConstructor;
@@ -43,6 +49,10 @@ public class SecurityConfig {
 
 			List<GrantedAuthority> authorities = new ArrayList<>();
 
+			extractBackendRoles(jwt, log).forEach(role ->
+				authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+			);
+
 			extractRealmRoles(jwt, log).forEach(role ->
 				authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
 			);
@@ -59,11 +69,23 @@ public class SecurityConfig {
 		return converter;
 	}
 
-/* =============================
-   Helper Methods
-   ============================= */
+	/* =============================
+	   Helper Methods
+	   ============================= */
+
+	private List<String> extractBackendRoles(Jwt jwt, Logger log) {
+		List<String> roles = jwt.getClaimAsStringList("roles");
+		if (roles == null) {
+			return List.of();
+		}
+		log.debug("Extracted backend roles from JWT: {}", roles);
+		return roles;
+	}
 
 	private void logJwtClaims(Jwt jwt, Logger log) {
+		if (!log.isDebugEnabled()) {
+			return;
+		}
 		log.debug("=== JWT Claims Debug ===");
 		jwt.getClaims()
 			.forEach((key, value) ->
@@ -147,49 +169,83 @@ public class SecurityConfig {
 	}
 
 	private void logGrantedAuthorities(Logger log, List<GrantedAuthority> authorities) {
-		log.info("JWT authentication successful - Total authorities granted: {}", authorities.size());
-
 		if (authorities.isEmpty()) {
 			log.warn("No authorities granted - check if user has roles assigned in Keycloak!");
 			return;
 		}
 
-		String granted = authorities.stream()
-			.map(GrantedAuthority::getAuthority)
-			.collect(Collectors.joining(", "));
-
-		log.info("Granted authorities: {}", granted);
+		// Per-request detail: DEBUG, not INFO. At INFO this produced two log lines on every
+		// single authenticated call.
+		if (log.isDebugEnabled()) {
+			String granted = authorities.stream()
+				.map(GrantedAuthority::getAuthority)
+				.collect(Collectors.joining(", "));
+			log.debug("JWT authentication successful - granted authorities ({}): {}", authorities.size(), granted);
+		}
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http, UserContextFilter userContextFilter) throws Exception {
+	public SecurityFilterChain filterChain(HttpSecurity http,
+	                                       UserContextFilter userContextFilter,
+	                                       OtpVerificationFilter otpVerificationFilter,
+	                                       RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+	                                       RestAccessDeniedHandler restAccessDeniedHandler,
+	                                       JwtDecoder jwtDecoder,
+	                                       CorsConfigurationSource corsConfigurationSource) throws Exception {
 
 		http
-			// H2 console needs full CSRF disabled
+			.cors(cors -> cors.configurationSource(corsConfigurationSource))
 			.csrf(AbstractHttpConfigurer::disable)
+			// OAuth2 authorization-code login requires a server-side session for state handling.
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+			.exceptionHandling(ex -> ex
+				.defaultAuthenticationEntryPointFor(
+					restAuthenticationEntryPoint,
+					request -> request.getRequestURI().startsWith("/api/")
+				)
+				.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/oauth2/authorization/silingan"))
+				.accessDeniedHandler(restAccessDeniedHandler)
+			)
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/public/**", "/auth/register")
+				.requestMatchers("/login/**", "/oauth2/**")
 				.permitAll()
-				.requestMatchers("/admin/**")
-				.hasRole("PLATFORM_ADMIN")
-				.requestMatchers("/community-admin/**")
-				.hasRole("COMMUNITY_ADMIN")
-				.requestMatchers("/resident/**")
-				.hasRole("RESIDENT")
+				.requestMatchers("/api/v1/public/**", "/api/v1/auth/register/self-service", "/api/v1/auth/login/otp")
+				.permitAll()
+				.requestMatchers(
+					"/api/v1/auth/otp/request",
+					"/api/v1/auth/otp/verify-registration"
+				)
+				.permitAll()
+				.requestMatchers(
+					"/v3/api-docs/**",
+					"/swagger-ui.html",
+					"/swagger-ui/**",
+					"/swagger-resources/**",
+					"/webjars/**",
+					"/error"
+				)
+				.permitAll()
+				.requestMatchers("/api/v1/auth/register")
+				.authenticated()
+				.requestMatchers("/api/v1/auth/otp/**")
+				.authenticated()
 				.anyRequest()
 				.authenticated()
 			)
-			// Keep OAuth2 login (Keycloak UI login)
-			.oauth2Login(oauth2 -> oauth2
-				.loginPage("/oauth2/authorization/silingan")
-				.defaultSuccessUrl("/", true)
-			)
-			// Keep JWT resource server for API clients
 			.oauth2ResourceServer(oauth2 ->
-				oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-			);
-		// Ensure this runs after Bearer token filter
+				oauth2.jwt(jwt -> jwt
+					.decoder(jwtDecoder)
+					.jwtAuthenticationConverter(jwtAuthenticationConverter())
+				)
+			)
+			.oauth2Login(Customizer.withDefaults())
+			// Frame options are left at the default DENY. They were previously disabled
+			// only so the H2 console could render in a frame; the application now runs on
+			// Postgres in every profile and H2 is gone, so clickjacking protection stays on.
+			.headers(Customizer.withDefaults());
+
 		http.addFilterAfter(userContextFilter, BearerTokenAuthenticationFilter.class);
+		http.addFilterAfter(otpVerificationFilter, UserContextFilter.class);
 
 		return http.build();
 	}

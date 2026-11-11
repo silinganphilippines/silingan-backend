@@ -1,6 +1,24 @@
 version: "3.9"
 
 services:
+  silingan-db:
+    image: postgres:16
+    container_name: silingan-app-db
+    environment:
+      POSTGRES_DB: silingan
+      POSTGRES_USER: silingan
+      POSTGRES_PASSWORD: silingan
+    # 5433 on the host: 5432 is commonly taken by a native Postgres install.
+    ports:
+      - "${SILINGAN_DB_PORT:-5433}:5432"
+    volumes:
+      - silingan-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U silingan -d silingan"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   postgres:
     image: postgres:16
     container_name: keycloak-postgres
@@ -14,10 +32,22 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d
 
+  # Local SMTP sink so invitation emails can be inspected without a real mail server.
+  # Web UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.5.6
     container_name: keycloak
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
@@ -26,11 +56,15 @@ services:
       KC_DB_PASSWORD: keycloak
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
     volumes:
+      - ./keycloak/themes:/opt/keycloak/themes
       - ./keycloak/providers:/opt/keycloak/providers
+      - ./keycloak/import:/opt/keycloak/data/import
     ports:
       - "8080:8080"
     depends_on:
       - postgres
+      - mailpit
 
 volumes:
   pgdata:
+  silingan-pgdata:

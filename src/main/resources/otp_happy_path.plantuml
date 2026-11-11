@@ -1,0 +1,38 @@
+@startuml
+
+title User Registration with SMS OTP Verification
+
+actor User
+participant Frontend
+participant "Spring Boot API" as API
+participant Keycloak
+participant Twilio
+
+User -> Frontend : Fill Registration Form\n(Name, Email, Mobile, Password)
+Frontend -> API : POST /register
+
+API -> Keycloak : Create User\nmobileNumber\nmobileVerified=false\nenabled=false
+Keycloak --> API : User Created
+
+API -> Twilio : Send OTP(mobileNumber)
+Twilio --> API : OTP Sent
+
+API --> Frontend : Registration Pending\nOTP Verification Required
+
+Frontend --> User : Display OTP Screen
+
+User -> Frontend : Enter OTP
+
+Frontend -> API : POST /verify-otp
+
+API -> Twilio : Validate OTP
+Twilio --> API : OTP Valid
+
+API -> Keycloak : Update User\nmobileVerified=true\nenabled=true
+Keycloak --> API : User Updated
+
+API --> Frontend : Registration Complete
+
+Frontend --> User : Account Successfully Verified
+
+@enduml

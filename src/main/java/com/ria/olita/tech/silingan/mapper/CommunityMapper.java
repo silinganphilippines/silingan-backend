@@ -21,7 +21,6 @@ public interface CommunityMapper {
 
 	Community toEntity(CreateCommunityRequest request);
 
-	@Mapping(source = "address", target = "address")
 	@Mapping(source = "createdBy.id", target = "createdBy")
 	@Mapping(source = "updatedBy.id", target = "updatedBy")
 	CommunityResponse toResponse(Community community);

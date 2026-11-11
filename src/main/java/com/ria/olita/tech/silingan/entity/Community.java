@@ -5,9 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.ria.olita.tech.silingan.entity.base.BaseEntity;
@@ -20,32 +17,39 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "communities")
+@Table(
+	name = "communities",
+	indexes = {
+		@Index(name = "idx_community_code", columnList = "community_code"),
+		@Index(name = "idx_tenant_community", columnList = "tenant_id, community_code")
+	},
+	uniqueConstraints = {
+		@UniqueConstraint(
+			name = "uk_tenant_community",
+			columnNames = {"tenant_id", "community_code"}
+		)
+	}
+)
 @Builder
-@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @SQLRestriction("deleted = false")
-
-@FilterDef(
-	name = "tenantFilter",
-	parameters = @ParamDef(name = "tenantId", type = UUID.class)
-)
-@Filter(
-	name = "tenantFilter",
-	condition = "tenant_id = :tenantId"
-)
+@Setter
+@Getter
 public class Community extends BaseEntity {
 
 	@Id
@@ -66,11 +70,18 @@ public class Community extends BaseEntity {
 	@JoinColumn(name = "logo_id")
 	private Media logo;
 
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "logo_attachment_id")
+	private Attachment logoAttachment;
+
+	@Column(name = "logo_attachment_id", insertable = false, updatable = false)
+	private UUID logoAttachmentId;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "type", columnDefinition = "VARCHAR(255)")
 	private CommunityType type;
 
-	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
 	@JoinColumn(name = "address_id", columnDefinition = "UUID")
 	private Address address;
 

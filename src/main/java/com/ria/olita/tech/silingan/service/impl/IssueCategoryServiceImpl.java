@@ -1,11 +1,10 @@
 package com.ria.olita.tech.silingan.service.impl;
 
 import com.ria.olita.tech.silingan.dto.req.CreateIssueCategoryRequest;
-import com.ria.olita.tech.silingan.dto.req.UpdateIssueCategoryRequest;
 import com.ria.olita.tech.silingan.dto.res.IssueCategoryResponse;
 import com.ria.olita.tech.silingan.entity.Community;
 import com.ria.olita.tech.silingan.entity.IssueCategory;
-import com.ria.olita.tech.silingan.exception.ResourceNotFoundException;
+import com.ria.olita.tech.silingan.exception.NotFoundException;
 import com.ria.olita.tech.silingan.repository.CommunityRepository;
 import com.ria.olita.tech.silingan.repository.IssueCategoryRepository;
 import com.ria.olita.tech.silingan.service.IssueCategoryService;
@@ -30,7 +29,7 @@ public class IssueCategoryServiceImpl implements IssueCategoryService {
 	@Override
 	public IssueCategoryResponse create(CreateIssueCategoryRequest request) {
 		Community community = communityRepository.findById(request.communityId())
-			.orElseThrow(() -> new ResourceNotFoundException("Community", "id", request.communityId()));
+			.orElseThrow(() -> new NotFoundException("Community not found with id " + request.communityId()));
 
 		IssueCategory category = IssueCategory.builder()
 			.description(request.description())
@@ -47,7 +46,7 @@ public class IssueCategoryServiceImpl implements IssueCategoryService {
 	@Transactional(readOnly = true)
 	public IssueCategoryResponse getById(UUID id) {
 		IssueCategory category = issueCategoryRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("IssueCategory", "id", id));
+			.orElseThrow(() -> new NotFoundException("IssueCategory not found with id = " + id));
 		return IssueCategoryResponse.fromEntity(category);
 	}
 
@@ -114,7 +113,7 @@ public class IssueCategoryServiceImpl implements IssueCategoryService {
 	@Override
 	public void delete(UUID id) {
 		IssueCategory category = issueCategoryRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("IssueCategory", "id", id));
+			.orElseThrow(() -> new NotFoundException("IssueCategory not found with id = " + id));
 		category.setDeleted(true);
 		issueCategoryRepository.save(category);
 	}
@@ -122,7 +121,7 @@ public class IssueCategoryServiceImpl implements IssueCategoryService {
 	@Override
 	public IssueCategoryResponse restore(UUID id) {
 		IssueCategory category = issueCategoryRepository.findByIdIncludingDeleted(id)
-			.orElseThrow(() -> new ResourceNotFoundException("IssueCategory", "id", id));
+			.orElseThrow(() -> new NotFoundException("IssueCategory not found with id = " + id));
 		category.setDeleted(false);
 		IssueCategory restored = issueCategoryRepository.save(category);
 		return IssueCategoryResponse.fromEntity(restored);
@@ -131,7 +130,7 @@ public class IssueCategoryServiceImpl implements IssueCategoryService {
 	@Override
 	public IssueCategoryResponse toggleActive(UUID id) {
 		IssueCategory category = issueCategoryRepository.findById(id)
-			.orElseThrow(() -> new ResourceNotFoundException("IssueCategory", "id", id));
+			.orElseThrow(() -> new NotFoundException("IssueCategory not found with id =" + id));
 
 		category.setIsActive(!category.getIsActive());
 		IssueCategory updated = issueCategoryRepository.save(category);

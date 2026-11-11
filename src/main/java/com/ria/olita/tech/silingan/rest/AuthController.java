@@ -1,8 +1,15 @@
 package com.ria.olita.tech.silingan.rest;
 
-import com.ria.olita.tech.silingan.dto.req.RegisterRequest;
-import com.ria.olita.tech.silingan.service.UserOnboardingService;
+import com.ria.olita.tech.silingan.dto.req.CreateUserRequest;
+import com.ria.olita.tech.silingan.dto.req.OtpVerifyRequest;
+import com.ria.olita.tech.silingan.dto.res.CreatedUserResponse;
+import com.ria.olita.tech.silingan.dto.res.LoginResponse;
+import com.ria.olita.tech.silingan.service.UserService;
+import com.ria.olita.tech.silingan.service.auth.AuthenticationService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.slf4j.Logger;
@@ -14,42 +21,65 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Tag(name = "Auth", description = "Authentication and user registration APIs")
 public class AuthController {
 
 	private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-	private final UserOnboardingService userOnboardingService;
+	private final UserService userService;
+	private final AuthenticationService authenticationService;
 
-	@PostMapping("/register")
-	public ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest request) {
-		log.info("Registration request received for username: {}", request.username());
+	@PostMapping("/register/self-service")
+	@Operation(summary = "Self-service user registration", description = "Registers a user after OTP verification of mobile number")
+	public ResponseEntity<Map<String, Object>> selfServiceRegister(
+		@Valid @RequestBody CreateUserRequest request) {
+		log.info("Self-service registration request received for username: {}", request.username());
 
 		try {
-			// Register user in Keycloak and database
-			userOnboardingService.registerUser(request);
+			CreatedUserResponse createdUser = userService.createSelfServiceUser(request);
 
-			Map<String, Object> response = new HashMap<>();
-			response.put("success", true);
-			response.put("message", "User registered successfully");
-			response.put("username", request.username());
+			Map<String, Object> payload = new HashMap<>();
+			payload.put("success", true);
+			payload.put("message", "User registered successfully");
+			payload.put("username", createdUser.username());
+			payload.put("user", createdUser);
+
+			LoginResponse response = authenticationService.issueTokenForMobile(createdUser.mobileNumber(), createdUser.communityId());
+			payload.put("login", response);
+			payload.put("accessToken", response.accessToken());
+			payload.put("tokenType", response.tokenType());
+			payload.put("expiresIn", response.expiresIn());
+			payload.put("roles", response.roles());
 
 			return ResponseEntity.status(HttpStatus.CREATED)
-				.body(response);
-
+				.body(payload);
 		} catch (Exception e) {
-			log.error("Registration failed: ", e);
+			log.error("Self-service registration failed for user {}: {}", request.username(), e.getMessage());
 			Map<String, Object> errorResponse = new HashMap<>();
 			errorResponse.put("success", false);
-			errorResponse.put("message", e.getMessage());
+			errorResponse.put("message", e.getMessage() != null ? e.getMessage() : "An unexpected error occurred");
+			errorResponse.put("errorType", e.getClass()
+				.getSimpleName());
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(errorResponse);
 		}
 	}
+
+
+	@PostMapping("/login/otp")
+	@Operation(summary = "Login with OTP", description = "Verifies OTP and returns backend-issued JWT")
+	public ResponseEntity<LoginResponse> loginWithOtp(
+		@Valid @RequestBody OtpVerifyRequest request) {
+		return ResponseEntity.ok(authenticationService.loginWithOtp(request));
+	}
+
 
 }

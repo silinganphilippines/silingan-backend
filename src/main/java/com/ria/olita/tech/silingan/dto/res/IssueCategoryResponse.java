@@ -11,7 +11,6 @@ public record IssueCategoryResponse(
 	String name,
 	String description,
 	UUID communityId,
-	String communityName,
 	Integer displayOrder,
 	Boolean isActive,
 	Boolean deleted
@@ -21,8 +20,7 @@ public record IssueCategoryResponse(
 			.id(category.getId())
 			.name(category.getName())
 			.description(category.getDescription())
-			.communityId(category.getCommunity() != null ? category.getCommunity().getId() : null)
-			.communityName(category.getCommunity() != null ? category.getCommunity().getName() : null)
+			.communityId(category.getCommunityId())
 			.displayOrder(category.getDisplayOrder())
 			.isActive(category.getIsActive())
 			.deleted(category.getDeleted())
